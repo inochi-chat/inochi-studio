@@ -3,54 +3,62 @@ export function createHistoryManager(limit = 100) {
   const undoStack = [];
   const redoStack = [];
 
-  // 履歴を実行して保存
+  function isValidCommand(command) {
+    return (
+      command &&
+      typeof command.undo === "function" &&
+      typeof command.redo === "function"
+    );
+  }
+
   function execute(command) {
-    if (
-      !command ||
-      typeof command.undo !== "function" ||
-      typeof command.redo !== "function"
-    ) {
+    if (!isValidCommand(command)) {
       throw new Error("無効な履歴コマンドです");
     }
 
+    // 実行に成功した場合だけ履歴に保存
     command.redo();
 
     undoStack.push(command);
-
-    // 新しい操作をしたらRedo履歴を消す
     redoStack.length = 0;
 
-    // 履歴数の上限
     if (undoStack.length > limit) {
       undoStack.shift();
     }
+
+    return true;
   }
 
-  // 一つ前の操作に戻す
   function undo() {
     if (undoStack.length === 0) return false;
 
-    const command = undoStack.pop();
+    const command = undoStack[undoStack.length - 1];
 
     command.undo();
+
+    undoStack.pop();
     redoStack.push(command);
 
     return true;
   }
 
-  // 戻した操作をやり直す
   function redo() {
     if (redoStack.length === 0) return false;
 
-    const command = redoStack.pop();
+    const command = redoStack[redoStack.length - 1];
 
     command.redo();
+
+    redoStack.pop();
     undoStack.push(command);
+
+    if (undoStack.length > limit) {
+      undoStack.shift();
+    }
 
     return true;
   }
 
-  // 履歴をすべて消去
   function clear() {
     undoStack.length = 0;
     redoStack.length = 0;
