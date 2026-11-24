@@ -1,6 +1,4 @@
 
-import * as THREE from "three";
-
 export function createObjectSelection({
   camera,
   renderer,
@@ -8,7 +6,8 @@ export function createObjectSelection({
   transform,
   objectLock,
   onSelect,
-  multiSelectionController
+  multiSelectionController,
+  multiSelectionMode
 }) {
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -35,30 +34,19 @@ export function createObjectSelection({
 
     const object = selectedHit?.object ?? null;
 
-    if (multiSelectionController) {
-      const additive =
-        event.shiftKey ||
-        event.ctrlKey ||
-        event.metaKey;
-
-      if (additive) {
-        if (object) {
-          multiSelectionController.toggle(object);
-        }
-      } else {
-        multiSelectionController.select(object, false);
+    if (multiSelectionMode?.isEnabled()) {
+      if (object) {
+        multiSelectionController.toggle(object);
       }
-
-      const selected = multiSelectionController.getSelected();
-      onSelect(selected.length ? selected[0] : null);
       return;
     }
 
-    if (object) {
-      onSelect(object);
-    } else {
-      onSelect(null);
+    if (multiSelectionController) {
+      multiSelectionController.select(object, false);
+      return;
     }
+
+    onSelect(object);
   }
 
   renderer.domElement.addEventListener(
