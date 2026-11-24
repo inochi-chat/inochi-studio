@@ -9,7 +9,8 @@ export function createHierarchyUI({
   hierarchy,
   onSelect,
   onSetParent,
-  onRemoveParent
+  onRemoveParent,
+  onMove
 }) {
   const hierarchyView = createHierarchyView(
     listContainer,
@@ -17,7 +18,8 @@ export function createHierarchyUI({
     hierarchy,
     onSelect,
     onSetParent,
-    onRemoveParent
+    onRemoveParent,
+    onMove
   );
 
   const hierarchyControls = createHierarchyControls(
