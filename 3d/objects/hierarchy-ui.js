@@ -15,7 +15,8 @@ export function createHierarchyUI({
     listContainer,
     scene,
     hierarchy,
-    onSelect
+    onSelect,
+    onSetParent
   );
 
   const hierarchyControls = createHierarchyControls(
@@ -26,7 +27,6 @@ export function createHierarchyUI({
 
   function update(objects, selectedObject) {
     hierarchyView.render(objects, selectedObject);
-
     hierarchyControls.update(
       objects,
       selectedObject,
