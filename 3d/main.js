@@ -8,6 +8,7 @@ import { createObjectManager } from "./objects/object-manager.js";
 import { createObjectList } from "./objects/object-list.js";
 import { createHierarchyUI } from "./objects/hierarchy-ui.js";
 import { createObjectHierarchy } from "./objects/object-hierarchy.js";
+import { createHierarchyOrder } from "./objects/hierarchy-order.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -31,9 +32,13 @@ import {
   createRemoveParentCommand
 } from "./history/hierarchy-commands.js";
 
+import {
+  createMoveHierarchyObjectCommand
+} from "./history/hierarchy-order-commands.js";
+
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
-// 1. HTML要素の取得
+// 1. HTML要素
 const canvas = document.querySelector("#threeCanvas");
 const propertyPanel = document.querySelector("#propertyPanel");
 const objectListContainer = document.querySelector("#objectList");
@@ -56,6 +61,7 @@ const { scene, camera, renderer } = initializeEditor(canvas);
 // 3. 管理システム
 const objectManager = createObjectManager(scene);
 const hierarchy = createObjectHierarchy(scene, objectManager);
+const hierarchyOrder = createHierarchyOrder(objectManager, scene);
 const history = createHistoryManager(100);
 
 function getSelectedObject() {
@@ -121,25 +127,11 @@ function refreshProperties() {
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
-  inner.appendChild(
-    createNameEditor(object, refreshEditorUI)
-  );
-
-  inner.appendChild(
-    createPositionEditor(object, refreshEditorUI)
-  );
-
-  inner.appendChild(
-    createRotationEditor(object)
-  );
-
-  inner.appendChild(
-    createScaleEditor(object)
-  );
-
-  inner.appendChild(
-    createColorEditor(object)
-  );
+  inner.appendChild(createNameEditor(object, refreshEditorUI));
+  inner.appendChild(createPositionEditor(object, refreshEditorUI));
+  inner.appendChild(createRotationEditor(object));
+  inner.appendChild(createScaleEditor(object));
+  inner.appendChild(createColorEditor(object));
 
   propertyPanel.appendChild(inner);
 }
@@ -174,7 +166,8 @@ hierarchyUI = createHierarchyUI({
   hierarchy,
   onSelect: selectObject,
   onSetParent: setObjectParent,
-  onRemoveParent: removeObjectParent
+  onRemoveParent: removeObjectParent,
+  onMove: moveHierarchyObject
 });
 
 // 11. 履歴変更時
@@ -216,7 +209,6 @@ function deleteSelectedObject() {
 
   if (!object) return;
 
-  // 子を持つ親の削除は現在の段階では防止
   if (hierarchy.hasChildren(object)) {
     alert("子オブジェクトがあるため、先に親子関係を解除してください。");
     return;
@@ -235,7 +227,6 @@ function deleteSelectedObject() {
 function duplicateSelectedObject(object) {
   if (!object) return;
 
-  // 子を持つ親の複製は現在の段階では防止
   if (hierarchy.hasChildren(object)) {
     alert("子オブジェクトがあるため、現在は複製できません。");
     return;
@@ -294,7 +285,43 @@ function removeObjectParent(child) {
   }
 }
 
-// 17. Undo・Redo
+// 17. 階層の並び替え
+function moveHierarchyObject(object, target, position) {
+  if (!hierarchyOrder.canMove(object, target)) {
+    return;
+  }
+
+  const siblings = hierarchyOrder.getSiblings(object);
+
+  const oldIndex = hierarchyOrder.getIndex(object);
+  const targetIndex = siblings.indexOf(target);
+
+  if (oldIndex < 0 || targetIndex < 0) return;
+
+  let newIndex = targetIndex +
+    (position === "after" ? 1 : 0);
+
+  if (oldIndex < newIndex) {
+    newIndex--;
+  }
+
+  if (oldIndex === newIndex) return;
+
+  const command = createMoveHierarchyObjectCommand(
+    hierarchyOrder,
+    object,
+    newIndex,
+    () => {
+      refreshEditorUI();
+    }
+  );
+
+  if (command) {
+    history.execute(command);
+  }
+}
+
+// 18. Undo・Redo
 function undo() {
   history.undo();
 }
@@ -303,7 +330,7 @@ function redo() {
   history.redo();
 }
 
-// 18. 3D画面からの選択
+// 19. 3D画面からの選択
 createObjectSelection({
   camera,
   renderer,
@@ -312,7 +339,7 @@ createObjectSelection({
   onSelect: selectObject
 });
 
-// 19. ボタン接続
+// 20. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -346,8 +373,8 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// 20. キーボードショートカット
-document.addEventListener("keydown", (event) => {
+// 21. キーボードショートカット
+document.addEventListener("keydown", event => {
   const target = event.target;
 
   if (
@@ -376,7 +403,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// 21. 初期キューブ
+// 22. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
 
 const initialCube = objectManager.add(
@@ -388,7 +415,7 @@ if (initialCube) {
   selectObject(initialCube);
 }
 
-// 22. 描画ループ
+// 23. 描画ループ
 function animate() {
   requestAnimationFrame(animate);
 
