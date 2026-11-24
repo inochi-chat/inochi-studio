@@ -1,5 +1,4 @@
 
-import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { initializeEditor } from "./core/editor-init.js";
@@ -16,6 +15,13 @@ import { createColorEditor } from "./properties/color.js";
 
 import { createObjectSelection } from "./selection/object-selection.js";
 import { createTransformTool } from "./tools/transform-tool.js";
+
+import { createHistoryManager } from "./history/history-manager.js";
+
+import {
+  createAddObjectCommand,
+  createDeleteObjectCommand
+} from "./history/object-commands.js";
 
 // ----------------------------------------
 // 1. エディター初期化
@@ -36,11 +42,7 @@ const { scene, camera, renderer } = initializeEditor(canvas);
 // ----------------------------------------
 
 const objectManager = createObjectManager(scene);
-
-const objectListView = createObjectList(
-  objectListContainer,
-  (object) => selectObject(object)
-);
+const history = createHistoryManager(100);
 
 function getSelectedObject() {
   return objectManager.getSelected();
@@ -77,41 +79,40 @@ transform.addEventListener("mouseUp", () => {
 });
 
 // ----------------------------------------
-// 5. オブジェクト追加・削除
+// 5. プロパティ画面
 // ----------------------------------------
 
-function addObject(geometry, type) {
-  if (!geometry) return;
+function refreshProperties() {
+  propertyPanel.innerHTML = "";
 
-  const object = objectManager.add(geometry, type);
-
-  if (!object) return;
-
-  selectObject(object);
-}
-
-function addCube() {
-  addObject(createGeometry("cube"), "Cube");
-}
-
-function addSphere() {
-  addObject(createGeometry("sphere"), "Sphere");
-}
-
-function addCylinder() {
-  addObject(createGeometry("cylinder"), "Cylinder");
-}
-
-function deleteSelectedObject() {
   const object = getSelectedObject();
 
-  if (!object) return;
+  if (!object) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent =
+      "オブジェクトを選択すると、ここで詳細を編集できるよ。";
 
-  transform.detach();
-  objectManager.remove(object);
+    propertyPanel.appendChild(empty);
+    return;
+  }
 
-  updateObjectList();
-  refreshProperties();
+  const inner = document.createElement("div");
+  inner.className = "properties-inner";
+
+  inner.appendChild(
+    createNameEditor(object, updateObjectList)
+  );
+
+  inner.appendChild(
+    createPositionEditor(object, updateObjectList)
+  );
+
+  inner.appendChild(createRotationEditor(object));
+  inner.appendChild(createScaleEditor(object));
+  inner.appendChild(createColorEditor(object));
+
+  propertyPanel.appendChild(inner);
 }
 
 // ----------------------------------------
@@ -134,51 +135,92 @@ function selectObject(object) {
 }
 
 // ----------------------------------------
-// 7. プロパティ画面
+// 7. オブジェクト一覧
 // ----------------------------------------
 
-function refreshProperties() {
-  propertyPanel.innerHTML = "";
+const objectListView = createObjectList(
+  objectListContainer,
+  selectObject
+);
 
-  const object = getSelectedObject();
+// ----------------------------------------
+// 8. 履歴変更後の画面更新
+// ----------------------------------------
 
-  if (!object) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent =
-      "オブジェクトを選択すると、ここで詳細を編集できるよ。";
-
-    propertyPanel.appendChild(empty);
-    return;
-  }
-
-  const inner = document.createElement("div");
-  inner.className = "properties-inner";
-
-  inner.appendChild(
-    createNameEditor(object, () => {
-      updateObjectList();
-    })
-  );
-
-  inner.appendChild(
-    createPositionEditor(object, () => {
-      updateObjectList();
-    })
-  );
-
-  inner.appendChild(createRotationEditor(object));
-  inner.appendChild(createScaleEditor(object));
-  inner.appendChild(createColorEditor(object));
-
-  propertyPanel.appendChild(inner);
+function onHistoryChange(object) {
+  selectObject(object);
 }
 
 // ----------------------------------------
-// 8. オブジェクト選択機能
+// 9. オブジェクト追加
 // ----------------------------------------
 
-const objectSelection = createObjectSelection({
+function addObject(type) {
+  const geometry = createGeometry(type);
+
+  if (!geometry) return;
+
+  const command = createAddObjectCommand(
+    objectManager,
+    geometry,
+    type,
+    onHistoryChange
+  );
+
+  history.execute(command);
+}
+
+function addCube() {
+  addObject("Cube");
+}
+
+function addSphere() {
+  addObject("Sphere");
+}
+
+function addCylinder() {
+  addObject("Cylinder");
+}
+
+// ----------------------------------------
+// 10. オブジェクト削除
+// ----------------------------------------
+
+function deleteSelectedObject() {
+  const object = getSelectedObject();
+
+  if (!object) return;
+
+  const command = createDeleteObjectCommand(
+    objectManager,
+    object,
+    onHistoryChange
+  );
+
+  history.execute(command);
+}
+
+// ----------------------------------------
+// 11. Undo・Redo
+// ----------------------------------------
+
+function undo() {
+  if (history.undo()) {
+    console.log("Undo:", history.undoCount);
+  }
+}
+
+function redo() {
+  if (history.redo()) {
+    console.log("Redo:", history.redoCount);
+  }
+}
+
+// ----------------------------------------
+// 12. 画面上のオブジェクト選択
+// ----------------------------------------
+
+createObjectSelection({
   camera,
   renderer,
   objectManager,
@@ -187,7 +229,7 @@ const objectSelection = createObjectSelection({
 });
 
 // ----------------------------------------
-// 9. ボタン接続
+// 13. ボタン接続
 // ----------------------------------------
 
 document.querySelector("#addCube")
@@ -218,7 +260,40 @@ document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
 
 // ----------------------------------------
-// 10. 描画ループ
+// 14. キーボードショートカット
+// ----------------------------------------
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target?.isContentEditable
+  ) {
+    return;
+  }
+
+  if (!(event.ctrlKey || event.metaKey)) return;
+
+  if (event.key.toLowerCase() === "z") {
+    event.preventDefault();
+
+    if (event.shiftKey) {
+      redo();
+    } else {
+      undo();
+    }
+  }
+
+  if (event.key.toLowerCase() === "y") {
+    event.preventDefault();
+    redo();
+  }
+});
+
+// ----------------------------------------
+// 15. 描画ループ
 // ----------------------------------------
 
 function animate() {
@@ -231,7 +306,7 @@ function animate() {
 animate();
 
 // ----------------------------------------
-// 11. 初期オブジェクト
+// 16. 初期オブジェクト
 // ----------------------------------------
 
 addCube();
