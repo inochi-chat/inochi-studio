@@ -16,18 +16,9 @@
   </script>
 
   <style>
-    * { box-sizing: border-box; }
-
-    #duplicateObject {
-      background: #493b70;
-      border-color: #7964a8;
+    * {
+      box-sizing: border-box;
     }
-
-    #duplicateObject:hover {
-      background: #604b91;
-      border-color: #a48be8;
-    }
-
 
     body {
       margin: 0;
@@ -47,7 +38,10 @@
       border-bottom: 1px solid #40375e;
     }
 
-    .logo { font-weight: bold; letter-spacing: 2px; }
+    .logo {
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
 
     header a {
       color: #c9b5ff;
@@ -55,20 +49,36 @@
       font-size: 13px;
     }
 
+    /* メインレイアウト */
     .editor {
+      --sidebar-width: 220px;
+
       display: grid;
-      grid-template-columns: 175px minmax(0, 1fr) 250px;
+      grid-template-columns:
+        var(--sidebar-width)
+        10px
+        minmax(0, 1fr)
+        250px;
+
+      grid-template-rows: minmax(0, 1fr);
       height: calc(100dvh - 55px);
+      min-height: 0;
+      min-width: 0;
     }
 
     .sidebar {
+      min-width: 0;
+      min-height: 0;
       background: #211d39;
       padding: 12px;
       overflow-y: auto;
+      overflow-x: hidden;
       border-right: 1px solid #40375e;
     }
 
     .properties {
+      grid-column: 4;
+      grid-row: 1;
       border-right: none;
       border-left: 1px solid #40375e;
     }
@@ -90,7 +100,19 @@
       cursor: pointer;
     }
 
-    button:active { background: #62518d; }
+    button:active {
+      background: #62518d;
+    }
+
+    #duplicateObject {
+      background: #493b70;
+      border-color: #7964a8;
+    }
+
+    #duplicateObject:hover {
+      background: #604b91;
+      border-color: #a48be8;
+    }
 
     .history-buttons {
       display: grid;
@@ -110,7 +132,10 @@
       border-color: #c9b5ff;
     }
 
+    /* 3D画面 */
     .viewport {
+      grid-column: 3;
+      grid-row: 1;
       position: relative;
       min-width: 0;
       min-height: 0;
@@ -132,6 +157,38 @@
       pointer-events: none;
     }
 
+    /* サイドバー伸縮バー */
+    .sidebar-resizer {
+      grid-column: 2;
+      grid-row: 1;
+      position: relative;
+      background: #17152b;
+      border-left: 1px solid #40375e;
+      border-right: 1px solid #40375e;
+      cursor: col-resize;
+      touch-action: none;
+      z-index: 20;
+      user-select: none;
+    }
+
+    .sidebar-resizer::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 2px;
+      width: 4px;
+      background: #7964a8;
+      opacity: 0.55;
+      border-radius: 4px;
+    }
+
+    .sidebar-resizer:active::after {
+      background: #c9b5ff;
+      opacity: 1;
+    }
+
+    /* プロパティ */
     .property-name {
       width: 100%;
       padding: 9px;
@@ -144,7 +201,7 @@
 
     .property-row {
       display: grid;
-      grid-template-columns: 22px 1fr;
+      grid-template-columns: 22px minmax(0, 1fr);
       align-items: center;
       gap: 6px;
       margin-bottom: 7px;
@@ -181,18 +238,183 @@
       line-height: 1.8;
     }
 
+    /* オブジェクト一覧 */
+    .hierarchy-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .hierarchy-item .object-item {
+      width: 100%;
+      text-align: left;
+      background: #29233f;
+      border: 1px solid #493b70;
+      color: #eee8ff;
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    .hierarchy-item .object-item:hover {
+      background: #493b70;
+    }
+
+    .hierarchy-item .object-item.selected {
+      background: #604b91;
+      border-color: #a48be8;
+    }
+
+    /* 階層の1行 */
+    .hierarchy-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .hierarchy-row .hierarchy-toggle {
+      flex: 0 0 24px;
+      width: 24px;
+      min-width: 24px;
+      padding: 6px 0;
+      margin: 0;
+      background: transparent;
+      border: none;
+      color: #c9b5ff;
+      font-size: 11px;
+    }
+
+    .hierarchy-row .hierarchy-toggle:disabled {
+      opacity: 0.25;
+    }
+
+    .hierarchy-row .object-item {
+      flex: 1 1 0;
+      width: 0;
+      min-width: 20px;
+      margin: 0;
+      padding: 8px 4px;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .hierarchy-row > div {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 0;
+    }
+
+    .hierarchy-row .visibility-button {
+      width: 38px;
+      min-width: 38px;
+      height: 38px;
+      padding: 4px 2px;
+      margin: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    .hierarchy-row .lock-button {
+      width: 34px;
+      min-width: 34px;
+      height: 38px;
+      padding: 4px 2px;
+      margin: 0;
+      font-size: 13px;
+    }
+
+    /* 親子関係の操作パネル */
+    .hierarchy-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 12px;
+      background: #211b35;
+      border: 1px solid #493b70;
+      border-radius: 8px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .hierarchy-controls h3 {
+      margin: 0 0 6px;
+    }
+
+    .hierarchy-controls label {
+      font-size: 12px;
+      color: #c9bde8;
+    }
+
+    .hierarchy-controls select {
+      width: 100%;
+      min-width: 0;
+      padding: 8px;
+      color: #eee8ff;
+      background: #29233f;
+      border: 1px solid #604b91;
+      border-radius: 6px;
+    }
+
+    .hierarchy-controls button {
+      width: 100%;
+      padding: 9px;
+      margin-bottom: 0;
+      color: white;
+      background: #493b70;
+      border: 1px solid #7964a8;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .hierarchy-controls button:hover {
+      background: #604b91;
+    }
+
+    /* スマホ */
     @media (max-width: 750px) {
       .editor {
-        grid-template-columns: 105px minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) 210px;
+        --sidebar-width: 165px;
+
+        grid-template-columns:
+          var(--sidebar-width)
+          10px
+          minmax(0, 1fr);
+
+        grid-template-rows:
+          minmax(0, 1fr)
+          210px;
+      }
+
+      .sidebar {
+        grid-column: 1;
+        grid-row: 1;
+        padding: 10px;
+      }
+
+      .viewport {
+        grid-column: 3;
+        grid-row: 1;
       }
 
       .properties {
-        grid-column: 1 / 3;
+        grid-column: 1 / 4;
         grid-row: 2;
         border-left: none;
         border-top: 1px solid #40375e;
         padding: 8px 12px;
+      }
+
+      .sidebar-resizer {
+        grid-column: 2;
+        grid-row: 1;
       }
 
       .properties-inner {
@@ -201,129 +423,41 @@
         gap: 8px 15px;
       }
 
-      .properties h3 { margin: 5px 0; }
-      .property-group { padding: 5px 0; }
-      .logo { font-size: 12px; }
-      button { font-size: 10px; padding: 8px 3px; }
-      .history-buttons button { font-size: 10px; }
+      .properties h3 {
+        margin: 5px 0;
+      }
+
+      .property-group {
+        padding: 5px 0;
+      }
+
+      .logo {
+        font-size: 12px;
+      }
+
+      .sidebar button {
+        font-size: 10px;
+        padding: 8px 3px;
+      }
+
+      .history-buttons button {
+        font-size: 10px;
+      }
     }
-
-/* オブジェクト階層 */
-.hierarchy-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 100%;
-}
-
-.hierarchy-item .object-item {
-  width: 100%;
-  text-align: left;
-  background: #29233f;
-  border: 1px solid #493b70;
-  color: #eee8ff;
-  border-radius: 6px;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.hierarchy-item .object-item:hover {
-  background: #493b70;
-}
-
-.hierarchy-item .object-item.selected {
-  background: #604b91;
-  border-color: #a48be8;
-}
-
-/* 親子関係の操作パネル */
-.hierarchy-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 12px;
-  background: #211b35;
-  border: 1px solid #493b70;
-  border-radius: 8px;
-}
-
-.hierarchy-controls h3 {
-  margin: 0 0 6px;
-}
-
-.hierarchy-controls label {
-  font-size: 12px;
-  color: #c9bde8;
-}
-
-.hierarchy-controls select {
-  width: 100%;
-  padding: 8px;
-  color: #eee8ff;
-  background: #29233f;
-  border: 1px solid #604b91;
-  border-radius: 6px;
-}
-
-.hierarchy-controls button {
-  width: 100%;
-  padding: 9px;
-  color: white;
-  background: #493b70;
-  border: 1px solid #7964a8;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.hierarchy-controls button:hover {
-  background: #604b91;
-}
-
-    
-.hierarchy-row {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  width: 100%;
-}
-
-.hierarchy-row .hierarchy-toggle {
-  flex: 0 0 26px;
-  width: 26px;
-  padding: 6px 0;
-  margin: 0;
-  background: transparent;
-  border: none;
-  color: #c9b5ff;
-  font-size: 11px;
-}
-
-.hierarchy-row .hierarchy-toggle:disabled {
-  opacity: 0.25;
-}
-
-.hierarchy-row .object-item {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
   </style>
 </head>
 
 <body>
+
 <header>
   <div class="logo">INOCHI STUDIO / 3D</div>
   <a href="../index.html">← ホーム</a>
 </header>
 
 <main class="editor">
+
   <aside class="sidebar">
+
     <h3>オブジェクト追加</h3>
     <button id="addCube">＋ キューブ</button>
     <button id="addSphere">＋ 球体</button>
@@ -342,16 +476,22 @@
     <button id="duplicateObject">📑 複製</button>
     <button id="deleteObject">🗑️ 削除</button>
 
-    
-<h3>オブジェクト一覧</h3>
-<div id="objectList"></div>
+    <h3>オブジェクト一覧</h3>
+    <div id="objectList"></div>
 
-<h3>オブジェクト階層</h3>
-<div id="hierarchyList"></div>
+    <h3>オブジェクト階層</h3>
+    <div id="hierarchyList"></div>
 
-<div id="hierarchyControls"></div>
+    <div id="hierarchyControls"></div>
 
   </aside>
+
+  <!-- サイドバー伸縮バー -->
+  <div
+    id="sidebarResizer"
+    class="sidebar-resizer"
+    aria-label="サイドバー幅の調整"
+  ></div>
 
   <section class="viewport">
     <div class="viewport-label">3D VIEWPORT</div>
@@ -362,11 +502,92 @@
     <h3>オブジェクトプロパティ</h3>
 
     <div id="propertyPanel">
-      <p class="empty">オブジェクトを選択すると、ここで詳細を編集できるよ。</p>
+      <p class="empty">
+        オブジェクトを選択すると、ここで詳細を編集できるよ。
+      </p>
     </div>
   </aside>
+
 </main>
 
+<!-- サイドバーの伸縮操作 -->
+<script>
+(() => {
+  const editor = document.querySelector(".editor");
+  const resizer = document.querySelector("#sidebarResizer");
+
+  if (!editor || !resizer) return;
+
+  let resizing = false;
+
+  function getLimits() {
+    const mobile = window.matchMedia("(max-width: 750px)").matches;
+    const width = editor.getBoundingClientRect().width;
+
+    return mobile
+      ? {
+          min: 120,
+          max: Math.max(120, Math.min(260, width - 100))
+        }
+      : {
+          min: 180,
+          max: Math.max(180, Math.min(360, width - 430))
+        };
+  }
+
+  resizer.addEventListener("pointerdown", event => {
+    resizing = true;
+
+    resizer.setPointerCapture(event.pointerId);
+
+    event.preventDefault();
+  });
+
+  resizer.addEventListener("pointermove", event => {
+    if (!resizing) return;
+
+    const rect = editor.getBoundingClientRect();
+    const limits = getLimits();
+
+    const newWidth = Math.max(
+      limits.min,
+      Math.min(limits.max, event.clientX - rect.left)
+    );
+
+    editor.style.setProperty(
+      "--sidebar-width",
+      newWidth + "px"
+    );
+
+    window.dispatchEvent(new Event("resize"));
+  });
+
+  function stopResizing() {
+    resizing = false;
+  }
+
+  resizer.addEventListener("pointerup", stopResizing);
+  resizer.addEventListener("pointercancel", stopResizing);
+
+  window.addEventListener("resize", () => {
+    if (resizing) return;
+
+    const limits = getLimits();
+    const current = parseFloat(
+      getComputedStyle(editor).getPropertyValue("--sidebar-width")
+    );
+
+    if (current > limits.max) {
+      editor.style.setProperty(
+        "--sidebar-width",
+        limits.max + "px"
+      );
+    }
+  });
+})();
+</script>
+
 <script type="module" src="./main.js"></script>
+
 </body>
 </html>
