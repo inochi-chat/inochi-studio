@@ -1,20 +1,22 @@
 
 export function createHierarchyOrder(objectManager, scene) {
   function getParent(object) {
-    if (!object || !object.parent) return null;
-    return object.parent;
+    return object?.parent || null;
   }
 
   function getSiblings(object) {
     const parent = getParent(object);
+
     if (!parent) return [];
 
     if (parent === scene) {
-      return objectManager.getAll().filter(item => item.parent === scene);
+      return objectManager.getAll().filter(
+        item => item.parent === scene
+      );
     }
 
-    return parent.children.filter(child =>
-      objectManager.getAll().includes(child)
+    return parent.children.filter(
+      child => objectManager.getAll().includes(child)
     );
   }
 
@@ -23,70 +25,92 @@ export function createHierarchyOrder(objectManager, scene) {
   }
 
   function canMove(object, target) {
-    if (!object || !target || object === target) return false;
+    if (!object || !target || object === target) {
+      return false;
+    }
+
     return getParent(object) === getParent(target);
+  }
+
+  function moveToIndex(object, newIndex) {
+    const parent = getParent(object);
+    if (!parent) return false;
+
+    const siblings = getSiblings(object);
+    const oldIndex = siblings.indexOf(object);
+
+    if (oldIndex === -1) return false;
+
+    const safeIndex = Math.max(
+      0,
+      Math.min(newIndex, siblings.length - 1)
+    );
+
+    if (oldIndex === safeIndex) return false;
+
+    if (parent === scene) {
+      const allObjects = objectManager.getAll();
+      const currentIndex = allObjects.indexOf(object);
+
+      if (currentIndex === -1) return false;
+
+      const remainingRoots = siblings.filter(
+        item => item !== object
+      );
+
+      const target = remainingRoots[safeIndex];
+
+      if (target) {
+        const targetIndex = allObjects.indexOf(target);
+        const insertIndex = safeIndex > oldIndex
+          ? targetIndex + 1
+          : targetIndex;
+
+        return objectManager.move(
+          object,
+          insertIndex > currentIndex
+            ? insertIndex - 1
+            : insertIndex
+        );
+      }
+
+      return objectManager.move(
+        object,
+        allObjects.length - 1
+      );
+    }
+
+    parent.children.splice(oldIndex, 1);
+    parent.children.splice(safeIndex, 0, object);
+
+    return true;
   }
 
   function move(object, target, position = "before") {
     if (!canMove(object, target)) return false;
 
-    const parent = getParent(object);
     const siblings = getSiblings(object);
-
-    const oldIndex = siblings.indexOf(object);
     const targetIndex = siblings.indexOf(target);
 
-    if (oldIndex < 0 || targetIndex < 0) return false;
+    if (targetIndex === -1) return false;
 
-    const nextIndex = position === "after"
-      ? targetIndex + 1
-      : targetIndex;
+    const newIndex = targetIndex +
+      (position === "after" ? 1 : 0);
 
-    if (
-      oldIndex === nextIndex ||
-      oldIndex + 1 === nextIndex
-    ) {
-      return false;
-    }
+    const adjustedIndex =
+      getIndex(object) < newIndex
+        ? newIndex - 1
+        : newIndex;
 
-    if (parent === scene) {
-      const objects = objectManager.getAll();
-      const from = objects.indexOf(object);
-      const to = objects.indexOf(target);
-
-      if (from < 0 || to < 0) return false;
-
-      objects.splice(from, 1);
-      const insertIndex = position === "after"
-        ? objects.indexOf(target) + 1
-        : objects.indexOf(target);
-
-      objects.splice(insertIndex, 0, object);
-
-      return true;
-    }
-
-    const children = parent.children;
-    const from = children.indexOf(object);
-    const to = children.indexOf(target);
-
-    if (from < 0 || to < 0) return false;
-
-    children.splice(from, 1);
-
-    const insertIndex = position === "after"
-      ? children.indexOf(target) + 1
-      : children.indexOf(target);
-
-    children.splice(insertIndex, 0, object);
-
-    return true;
+    return moveToIndex(object, adjustedIndex);
   }
 
   return {
+    getParent,
     getSiblings,
     getIndex,
     canMove,
-    move
+    move,
+    moveToIndex
   };
 }
