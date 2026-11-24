@@ -1,7 +1,6 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { TransformControls } from "three/addons/controls/TransformControls.js";
 
 import { initializeEditor } from "./core/editor-init.js";
 
@@ -16,6 +15,7 @@ import { createScaleEditor } from "./properties/scale.js";
 import { createColorEditor } from "./properties/color.js";
 
 import { createObjectSelection } from "./selection/object-selection.js";
+import { createTransformTool } from "./tools/transform-tool.js";
 
 // ----------------------------------------
 // 1. エディター初期化
@@ -65,12 +65,12 @@ orbit.dampingFactor = 0.08;
 // 4. 変形ツール
 // ----------------------------------------
 
-const transform = new TransformControls(camera, renderer.domElement);
-scene.add(transform.getHelper());
-
-transform.addEventListener("dragging-changed", (event) => {
-  orbit.enabled = !event.value;
-});
+const transform = createTransformTool(
+  camera,
+  renderer,
+  scene,
+  orbit
+);
 
 transform.addEventListener("mouseUp", () => {
   refreshProperties();
@@ -167,27 +167,15 @@ function refreshProperties() {
     })
   );
 
-  inner.appendChild(
-    createRotationEditor(object, () => {
-      updateObjectList();
-    })
-  );
-
-  inner.appendChild(
-    createScaleEditor(object, () => {
-      updateObjectList();
-    })
-  );
-
-  inner.appendChild(
-    createColorEditor(object)
-  );
+  inner.appendChild(createRotationEditor(object));
+  inner.appendChild(createScaleEditor(object));
+  inner.appendChild(createColorEditor(object));
 
   propertyPanel.appendChild(inner);
 }
 
 // ----------------------------------------
-// 8. 画面上のオブジェクト選択機能
+// 8. オブジェクト選択機能
 // ----------------------------------------
 
 const objectSelection = createObjectSelection({
