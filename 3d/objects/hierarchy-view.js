@@ -24,7 +24,7 @@ export function createHierarchyView(container, scene, hierarchy, onSelect) {
       toggle.className = "hierarchy-toggle";
       toggle.textContent = hasChildren
         ? (collapsedObjects.has(object) ? "▶" : "▼")
-        : " ";
+        : "";
 
       toggle.disabled = !hasChildren;
 
@@ -40,10 +40,10 @@ export function createHierarchyView(container, scene, hierarchy, onSelect) {
 
       const button = document.createElement("button");
       button.className = "object-item";
-      button.textContent =
-        (hasChildren ? "📂 " : "📦 ") + object.name;
+      button.textContent = object.name || "名称なし";
+      button.title = object.name || "名称なし";
 
-      button.style.paddingLeft = `${8 + depth * 18}px`;
+      button.style.paddingLeft = `${8 + depth * 16}px`;
 
       if (object === selectedObject) {
         button.classList.add("selected");
