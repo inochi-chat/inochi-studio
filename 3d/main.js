@@ -10,9 +10,10 @@ import { createObjectManager } from "./objects/object-manager.js";
 import { createObjectList } from "./objects/object-list.js";
 
 import { createNameEditor } from "./properties/name.js";
+import { createPositionEditor } from "./properties/position.js";
 
 // ----------------------------------------
-// 1. 3Dエディターの初期化
+// 1. エディター初期化
 // ----------------------------------------
 
 const canvas = document.querySelector("#threeCanvas");
@@ -33,9 +34,7 @@ const objectManager = createObjectManager(scene);
 
 const objectListView = createObjectList(
   objectListContainer,
-  (object) => {
-    selectObject(object);
-  }
+  (object) => selectObject(object)
 );
 
 function getSelectedObject() {
@@ -73,7 +72,7 @@ transform.addEventListener("mouseUp", () => {
 });
 
 // ----------------------------------------
-// 5. オブジェクトの追加・削除
+// 5. オブジェクト追加・削除
 // ----------------------------------------
 
 function addObject(geometry, type) {
@@ -130,7 +129,7 @@ function selectObject(object) {
 }
 
 // ----------------------------------------
-// 7. プロパティ入力欄
+// 7. 数値入力欄
 // ----------------------------------------
 
 function makeNumberInput(label, value, onChange) {
@@ -158,6 +157,10 @@ function makeNumberInput(label, value, onChange) {
 
   return row;
 }
+
+// ----------------------------------------
+// 8. 回転・サイズ編集
+// ----------------------------------------
 
 function makeGroup(title, vector, onChange, isRotation = false) {
   const group = document.createElement("div");
@@ -192,17 +195,16 @@ function makeGroup(title, vector, onChange, isRotation = false) {
 }
 
 // ----------------------------------------
-// 8. プロパティ画面の更新
+// 9. プロパティ画面
 // ----------------------------------------
 
 function refreshProperties() {
   propertyPanel.innerHTML = "";
 
-  const selectedObject = getSelectedObject();
+  const object = getSelectedObject();
 
-  if (!selectedObject) {
+  if (!object) {
     const empty = document.createElement("p");
-
     empty.className = "empty";
     empty.textContent =
       "オブジェクトを選択すると、ここで詳細を編集できるよ。";
@@ -211,12 +213,10 @@ function refreshProperties() {
     return;
   }
 
-  const object = selectedObject;
-
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
-  // 名前編集
+  // 名前
   inner.appendChild(
     createNameEditor(object, () => {
       updateObjectList();
@@ -225,8 +225,8 @@ function refreshProperties() {
 
   // 位置
   inner.appendChild(
-    makeGroup("位置", object.position, (index, value) => {
-      object.position.setComponent(index, value);
+    createPositionEditor(object, () => {
+      updateObjectList();
     })
   );
 
@@ -273,7 +273,7 @@ function refreshProperties() {
 }
 
 // ----------------------------------------
-// 9. 画面からオブジェクトを選択
+// 10. 画面からオブジェクトを選択
 // ----------------------------------------
 
 const raycaster = new THREE.Raycaster();
@@ -304,7 +304,7 @@ function selectAtPointer(event) {
 renderer.domElement.addEventListener("pointerdown", selectAtPointer);
 
 // ----------------------------------------
-// 10. ボタン接続
+// 11. ボタン接続
 // ----------------------------------------
 
 document.querySelector("#addCube")
@@ -335,7 +335,7 @@ document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
 
 // ----------------------------------------
-// 11. 描画ループ
+// 12. 描画ループ
 // ----------------------------------------
 
 function animate() {
@@ -348,7 +348,7 @@ function animate() {
 animate();
 
 // ----------------------------------------
-// 12. 初期オブジェクト
+// 13. 初期オブジェクト
 // ----------------------------------------
 
 addCube();
