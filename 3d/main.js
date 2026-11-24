@@ -1,37 +1,34 @@
 
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
-import { TransformControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/TransformControls.js";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TransformControls } from "three/addons/controls/TransformControls.js";
+import { initializeEditor } from "./core/editor-init.js";
+
+// ----------------------------------------
+// 1. 3Dエディターの初期化
+// ----------------------------------------
 
 const canvas = document.querySelector("#threeCanvas");
+const propertyPanel = document.querySelector("#propertyPanel");
+const objectList = document.querySelector("#objectList");
 
-if (!canvas) {
-  throw new Error("threeCanvas が見つかりません");
+if (!canvas || !propertyPanel || !objectList) {
+  throw new Error("3DエディターのHTML要素が見つかりません");
 }
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x17152b);
+const { scene, camera, renderer } = initializeEditor(canvas);
 
-const camera = new THREE.PerspectiveCamera(
-  50,
-  1,
-  0.1,
-  1000
-);
-camera.position.set(6, 5, 8);
-
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true
-});
-
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// ----------------------------------------
+// 2. カメラ操作
+// ----------------------------------------
 
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
+
+// ----------------------------------------
+// 3. 変形ツール
+// ----------------------------------------
 
 const transform = new TransformControls(camera, renderer.domElement);
 scene.add(transform.getHelper());
@@ -40,24 +37,21 @@ transform.addEventListener("dragging-changed", (event) => {
   orbit.enabled = !event.value;
 });
 
-scene.add(new THREE.GridHelper(20, 20, 0x8877cc, 0x39334f));
-scene.add(new THREE.AxesHelper(2));
+transform.addEventListener("mouseUp", () => {
+  refreshProperties();
+});
 
-const ambient = new THREE.AmbientLight(0xffffff, 1.5);
-scene.add(ambient);
-
-const light = new THREE.DirectionalLight(0xffffff, 2);
-light.position.set(5, 10, 7);
-light.castShadow = true;
-scene.add(light);
+// ----------------------------------------
+// 4. オブジェクト管理
+// ----------------------------------------
 
 const objects = [];
 let selectedObject = null;
+let objectCounter = 0;
 
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
+function addObject(geometry, type) {
+  objectCounter++;
 
-function addObject(geometry, name) {
   const material = new THREE.MeshStandardMaterial({
     color: 0x9b83ff,
     roughness: 0.55,
@@ -65,29 +59,25 @@ function addObject(geometry, name) {
   });
 
   const object = new THREE.Mesh(geometry, material);
-  object.name = name;
-  object.position.y = geometry.parameters?.radius ? 1 : 0.5;
+
+  object.name = `${type}_${objectCounter}`;
+  object.position.y = 0.5;
   object.castShadow = true;
   object.receiveShadow = true;
 
   scene.add(object);
   objects.push(object);
+
   selectObject(object);
   updateObjectList();
 }
 
 function addCube() {
-  addObject(
-    new THREE.BoxGeometry(1, 1, 1),
-    "Cube"
-  );
+  addObject(new THREE.BoxGeometry(1, 1, 1), "Cube");
 }
 
 function addSphere() {
-  addObject(
-    new THREE.SphereGeometry(0.7, 32, 24),
-    "Sphere"
-  );
+  addObject(new THREE.SphereGeometry(0.7, 32, 24), "Sphere");
 }
 
 function addCylinder() {
@@ -96,6 +86,31 @@ function addCylinder() {
     "Cylinder"
   );
 }
+
+function deleteSelectedObject() {
+  if (!selectedObject) return;
+
+  transform.detach();
+  scene.remove(selectedObject);
+
+  selectedObject.geometry.dispose();
+
+  if (Array.isArray(selectedObject.material)) {
+    selectedObject.material.forEach((material) => material.dispose());
+  } else {
+    selectedObject.material.dispose();
+  }
+
+  objects.splice(objects.indexOf(selectedObject), 1);
+  selectedObject = null;
+
+  updateObjectList();
+  refreshProperties();
+}
+
+// ----------------------------------------
+// 5. オブジェクト選択
+// ----------------------------------------
 
 function selectObject(object) {
   selectedObject = object;
@@ -107,18 +122,17 @@ function selectObject(object) {
   }
 
   updateObjectList();
+  refreshProperties();
 }
 
 function updateObjectList() {
-  const list = document.querySelector("#objectList");
-  if (!list) return;
+  objectList.innerHTML = "";
 
-  list.innerHTML = "";
-
-  objects.forEach((object, index) => {
+  objects.forEach((object) => {
     const item = document.createElement("button");
+
     item.className = "object-item";
-    item.textContent = object.name + " " + (index + 1);
+    item.textContent = object.name;
 
     if (object === selectedObject) {
       item.classList.add("selected");
@@ -128,9 +142,164 @@ function updateObjectList() {
       selectObject(object);
     });
 
-    list.appendChild(item);
+    objectList.appendChild(item);
   });
 }
+
+// ----------------------------------------
+// 6. プロパティ入力欄
+// ----------------------------------------
+
+function makeNumberInput(label, value, onChange) {
+  const row = document.createElement("div");
+  row.className = "property-row";
+
+  const text = document.createElement("label");
+  text.textContent = label;
+
+  const input = document.createElement("input");
+  input.type = "number";
+  input.step = "0.1";
+  input.value = Number(value.toFixed(2));
+
+  input.addEventListener("change", () => {
+    const number = Number(input.value);
+
+    if (!Number.isFinite(number)) return;
+
+    onChange(number);
+    updateObjectList();
+  });
+
+  row.append(text, input);
+
+  return row;
+}
+
+function makeGroup(title, vector, onChange, isRotation = false) {
+  const group = document.createElement("div");
+  group.className = "property-group";
+
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+
+  group.appendChild(heading);
+
+  ["X", "Y", "Z"].forEach((axis, index) => {
+    const key = axis.toLowerCase();
+    const value = vector[key];
+
+    const displayValue = isRotation
+      ? THREE.MathUtils.radToDeg(value)
+      : value;
+
+    group.appendChild(
+      makeNumberInput(axis, displayValue, (number) => {
+        const converted = isRotation
+          ? THREE.MathUtils.degToRad(number)
+          : number;
+
+        onChange(index, converted);
+        refreshProperties();
+      })
+    );
+  });
+
+  return group;
+}
+
+function refreshProperties() {
+  propertyPanel.innerHTML = "";
+
+  if (!selectedObject) {
+    const empty = document.createElement("p");
+
+    empty.className = "empty";
+    empty.textContent =
+      "オブジェクトを選択すると、ここで詳細を編集できるよ。";
+
+    propertyPanel.appendChild(empty);
+    return;
+  }
+
+  const object = selectedObject;
+
+  const inner = document.createElement("div");
+  inner.className = "properties-inner";
+
+  const nameHeading = document.createElement("h3");
+  nameHeading.textContent = "名前";
+
+  inner.appendChild(nameHeading);
+
+  const nameInput = document.createElement("input");
+  nameInput.className = "property-name";
+  nameInput.value = object.name;
+
+  nameInput.addEventListener("change", () => {
+    const newName = nameInput.value.trim();
+
+    if (newName) {
+      object.name = newName;
+      updateObjectList();
+    } else {
+      nameInput.value = object.name;
+    }
+  });
+
+  inner.appendChild(nameInput);
+
+  inner.appendChild(
+    makeGroup("位置", object.position, (index, value) => {
+      object.position.setComponent(index, value);
+    })
+  );
+
+  inner.appendChild(
+    makeGroup(
+      "回転（度）",
+      object.rotation,
+      (index, value) => {
+        object.rotation.setComponent(index, value);
+      },
+      true
+    )
+  );
+
+  inner.appendChild(
+    makeGroup("サイズ", object.scale, (index, value) => {
+      object.scale.setComponent(index, value);
+    })
+  );
+
+  const colorGroup = document.createElement("div");
+  colorGroup.className = "property-group";
+
+  const colorHeading = document.createElement("h3");
+  colorHeading.textContent = "カラー";
+
+  colorGroup.appendChild(colorHeading);
+
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.value = "#" + object.material.color.getHexString();
+
+  colorInput.addEventListener("input", () => {
+    object.material.color.set(colorInput.value);
+  });
+
+  colorGroup.appendChild(colorInput);
+  inner.appendChild(colorGroup);
+
+  propertyPanel.appendChild(inner);
+}
+
+// ----------------------------------------
+// 7. 画面からオブジェクトを選択
+// ----------------------------------------
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
 
 function selectAtPointer(event) {
   if (transform.dragging) return;
@@ -153,58 +322,53 @@ function selectAtPointer(event) {
 
 renderer.domElement.addEventListener("pointerdown", selectAtPointer);
 
-document.querySelector("#addCube")?.addEventListener("click", addCube);
-document.querySelector("#addSphere")?.addEventListener("click", addSphere);
-document.querySelector("#addCylinder")?.addEventListener("click", addCylinder);
+// ----------------------------------------
+// 8. ボタン接続
+// ----------------------------------------
 
-document.querySelector("#moveTool")?.addEventListener("click", () => {
-  transform.setMode("translate");
-});
+document.querySelector("#addCube")
+  ?.addEventListener("click", addCube);
 
-document.querySelector("#rotateTool")?.addEventListener("click", () => {
-  transform.setMode("rotate");
-});
+document.querySelector("#addSphere")
+  ?.addEventListener("click", addSphere);
 
-document.querySelector("#scaleTool")?.addEventListener("click", () => {
-  transform.setMode("scale");
-});
+document.querySelector("#addCylinder")
+  ?.addEventListener("click", addCylinder);
 
-document.querySelector("#deleteObject")?.addEventListener("click", () => {
-  if (!selectedObject) return;
+document.querySelector("#moveTool")
+  ?.addEventListener("click", () => {
+    transform.setMode("translate");
+  });
 
-  transform.detach();
-  scene.remove(selectedObject);
+document.querySelector("#rotateTool")
+  ?.addEventListener("click", () => {
+    transform.setMode("rotate");
+  });
 
-  selectedObject.geometry.dispose();
-  selectedObject.material.dispose();
+document.querySelector("#scaleTool")
+  ?.addEventListener("click", () => {
+    transform.setMode("scale");
+  });
 
-  objects.splice(objects.indexOf(selectedObject), 1);
-  selectedObject = null;
+document.querySelector("#deleteObject")
+  ?.addEventListener("click", deleteSelectedObject);
 
-  updateObjectList();
-});
-
-function resize() {
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-
-  if (!width || !height) return;
-
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-  renderer.setSize(width, height, false);
-}
-
-window.addEventListener("resize", resize);
-resize();
+// ----------------------------------------
+// 9. 描画ループ
+// ----------------------------------------
 
 function animate() {
   requestAnimationFrame(animate);
+
   orbit.update();
   renderer.render(scene, camera);
 }
 
 animate();
+
+// ----------------------------------------
+// 10. 初期オブジェクト
+// ----------------------------------------
 
 addCube();
 
