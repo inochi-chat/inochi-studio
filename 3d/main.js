@@ -305,10 +305,20 @@ function animate() {
 
 animate();
 
+
 // ----------------------------------------
 // 16. 初期オブジェクト
 // ----------------------------------------
 
-addCube();
+const initialCubeGeometry = createGeometry("cube");
+
+if (initialCubeGeometry) {
+  const initialCube = objectManager.add(
+    initialCubeGeometry,
+    "Cube"
+  );
+
+  selectObject(initialCube);
+}
 
 console.log("Inochi Studio 3D Editor Ready");
