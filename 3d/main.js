@@ -15,6 +15,8 @@ import { createRotationEditor } from "./properties/rotation.js";
 import { createScaleEditor } from "./properties/scale.js";
 import { createColorEditor } from "./properties/color.js";
 
+import { createObjectSelection } from "./selection/object-selection.js";
+
 // ----------------------------------------
 // 1. エディター初期化
 // ----------------------------------------
@@ -153,35 +155,30 @@ function refreshProperties() {
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
-  // 名前
   inner.appendChild(
     createNameEditor(object, () => {
       updateObjectList();
     })
   );
 
-  // 位置
   inner.appendChild(
     createPositionEditor(object, () => {
       updateObjectList();
     })
   );
 
-  // 回転
   inner.appendChild(
     createRotationEditor(object, () => {
       updateObjectList();
     })
   );
 
-  // サイズ
   inner.appendChild(
     createScaleEditor(object, () => {
       updateObjectList();
     })
   );
 
-  // カラー
   inner.appendChild(
     createColorEditor(object)
   );
@@ -190,35 +187,16 @@ function refreshProperties() {
 }
 
 // ----------------------------------------
-// 8. 画面からオブジェクトを選択
+// 8. 画面上のオブジェクト選択機能
 // ----------------------------------------
 
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-
-function selectAtPointer(event) {
-  if (transform.dragging) return;
-
-  const rect = renderer.domElement.getBoundingClientRect();
-
-  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-  raycaster.setFromCamera(pointer, camera);
-
-  const hits = raycaster.intersectObjects(
-    objectManager.getAll(),
-    false
-  );
-
-  if (hits.length > 0) {
-    selectObject(hits[0].object);
-  } else {
-    selectObject(null);
-  }
-}
-
-renderer.domElement.addEventListener("pointerdown", selectAtPointer);
+const objectSelection = createObjectSelection({
+  camera,
+  renderer,
+  objectManager,
+  transform,
+  onSelect: selectObject
+});
 
 // ----------------------------------------
 // 9. ボタン接続
