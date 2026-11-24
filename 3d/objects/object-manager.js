@@ -1,4 +1,6 @@
 
+import * as THREE from "three";
+
 export function createObjectManager(scene) {
   const objects = [];
 
