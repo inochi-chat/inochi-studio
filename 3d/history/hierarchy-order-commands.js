@@ -1,11 +1,11 @@
 
-export function createMoveObjectCommand(
-  objectManager,
+export function createMoveHierarchyObjectCommand(
+  hierarchyOrder,
   object,
   newIndex,
   onChange
 ) {
-  const oldIndex = objectManager.getIndex(object);
+  const oldIndex = hierarchyOrder.getIndex(object);
 
   if (oldIndex === -1 || oldIndex === newIndex) {
     return null;
@@ -13,7 +13,7 @@ export function createMoveObjectCommand(
 
   return {
     undo() {
-      objectManager.move(object, oldIndex);
+      hierarchyOrder.moveToIndex(object, oldIndex);
 
       if (onChange) {
         onChange(object);
@@ -21,7 +21,7 @@ export function createMoveObjectCommand(
     },
 
     redo() {
-      objectManager.move(object, newIndex);
+      hierarchyOrder.moveToIndex(object, newIndex);
 
       if (onChange) {
         onChange(object);
