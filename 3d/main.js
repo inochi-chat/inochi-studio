@@ -13,6 +13,7 @@ import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
 import { createRotationEditor } from "./properties/rotation.js";
 import { createScaleEditor } from "./properties/scale.js";
+import { createColorEditor } from "./properties/color.js";
 
 // ----------------------------------------
 // 1. エディター初期化
@@ -181,24 +182,9 @@ function refreshProperties() {
   );
 
   // カラー
-  const colorGroup = document.createElement("div");
-  colorGroup.className = "property-group";
-
-  const colorHeading = document.createElement("h3");
-  colorHeading.textContent = "カラー";
-
-  colorGroup.appendChild(colorHeading);
-
-  const colorInput = document.createElement("input");
-  colorInput.type = "color";
-  colorInput.value = "#" + object.material.color.getHexString();
-
-  colorInput.addEventListener("input", () => {
-    object.material.color.set(colorInput.value);
-  });
-
-  colorGroup.appendChild(colorInput);
-  inner.appendChild(colorGroup);
+  inner.appendChild(
+    createColorEditor(object)
+  );
 
   propertyPanel.appendChild(inner);
 }
