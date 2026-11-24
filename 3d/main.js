@@ -310,14 +310,21 @@ animate();
 // 16. 初期オブジェクト
 // ----------------------------------------
 
+
 const initialCubeGeometry = createGeometry("cube");
 
-if (initialCubeGeometry) {
-  const initialCube = objectManager.add(
-    initialCubeGeometry,
-    "Cube"
-  );
+console.log("① Geometry:", initialCubeGeometry);
 
+const initialCube = objectManager.add(
+  initialCubeGeometry,
+  "Cube"
+);
+
+console.log("② Object:", initialCube);
+console.log("③ Scene children:", scene.children);
+console.log("④ Object count:", objectManager.getCount());
+
+if (initialCube) {
   selectObject(initialCube);
 }
 
