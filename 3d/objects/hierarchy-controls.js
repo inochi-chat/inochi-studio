@@ -36,9 +36,18 @@ export function createHierarchyControls(
     removeButton
   );
 
+  container.innerHTML = "";
   container.appendChild(panel);
 
-  function render(objects, selectedObject, hierarchy) {
+  let currentObjects = [];
+
+  function findObject(uuid) {
+    return currentObjects.find(object => object.uuid === uuid);
+  }
+
+  function update(objects, selectedObject, hierarchy) {
+    currentObjects = objects;
+
     childSelect.innerHTML = "";
     parentSelect.innerHTML = "";
 
@@ -57,9 +66,7 @@ export function createHierarchyControls(
     if (selectedObject) {
       childSelect.value = selectedObject.uuid;
 
-      const currentParent = hierarchy.getParent(
-        selectedObject
-      );
+      const currentParent = hierarchy.getParent(selectedObject);
 
       if (currentParent) {
         parentSelect.value = currentParent.uuid;
@@ -73,11 +80,6 @@ export function createHierarchyControls(
 
     if (!child || !parent) return;
 
-    if (child === parent) {
-      alert("自分自身を親にはできません");
-      return;
-    }
-
     onSetParent(child, parent);
   });
 
@@ -89,20 +91,5 @@ export function createHierarchyControls(
     onRemoveParent(child);
   });
 
-  let currentObjects = [];
-
-  function findObject(uuid) {
-    return currentObjects.find(
-      object => object.uuid === uuid
-    );
-  }
-
-  function update(objects, selectedObject, hierarchy) {
-    currentObjects = objects;
-    render(objects, selectedObject, hierarchy);
-  }
-
-  return {
-    update
-  };
+  return { update };
 }
