@@ -9,6 +9,7 @@ import { createObjectList } from "./objects/object-list.js";
 import { createHierarchyUI } from "./objects/hierarchy-ui.js";
 import { createObjectHierarchy } from "./objects/object-hierarchy.js";
 import { createHierarchyOrder } from "./objects/hierarchy-order.js";
+import { createObjectVisibility } from "./objects/object-visibility.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -62,6 +63,7 @@ const { scene, camera, renderer } = initializeEditor(canvas);
 const objectManager = createObjectManager(scene);
 const hierarchy = createObjectHierarchy(scene, objectManager);
 const hierarchyOrder = createHierarchyOrder(objectManager, scene);
+const visibility = createObjectVisibility();
 const history = createHistoryManager(100);
 
 function getSelectedObject() {
@@ -167,7 +169,9 @@ hierarchyUI = createHierarchyUI({
   onSelect: selectObject,
   onSetParent: setObjectParent,
   onRemoveParent: removeObjectParent,
-  onMove: moveHierarchyObject
+  onMove: moveHierarchyObject,
+  visibility,
+  onVisibilityChange: handleVisibilityChange
 });
 
 // 11. 履歴変更時
@@ -321,7 +325,14 @@ function moveHierarchyObject(object, target, position) {
   }
 }
 
-// 18. Undo・Redo
+// 18. 表示・非表示の変更
+function handleVisibilityChange(object) {
+  if (!object) return;
+
+  refreshEditorUI();
+}
+
+// 19. Undo・Redo
 function undo() {
   history.undo();
 }
@@ -330,7 +341,7 @@ function redo() {
   history.redo();
 }
 
-// 19. 3D画面からの選択
+// 20. 3D画面からの選択
 createObjectSelection({
   camera,
   renderer,
@@ -339,7 +350,7 @@ createObjectSelection({
   onSelect: selectObject
 });
 
-// 20. ボタン接続
+// 21. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -373,7 +384,7 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// 21. キーボードショートカット
+// 22. キーボードショートカット
 document.addEventListener("keydown", event => {
   const target = event.target;
 
@@ -403,7 +414,7 @@ document.addEventListener("keydown", event => {
   }
 });
 
-// 22. 初期キューブ
+// 23. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
 
 const initialCube = objectManager.add(
@@ -415,7 +426,7 @@ if (initialCube) {
   selectObject(initialCube);
 }
 
-// 23. 描画ループ
+// 24. 描画ループ
 function animate() {
   requestAnimationFrame(animate);
 
