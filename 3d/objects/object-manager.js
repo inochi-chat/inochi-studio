@@ -7,7 +7,6 @@ export function createObjectManager(scene) {
   let selectedObject = null;
   let objectCounter = 0;
 
-  // 取り外したオブジェクトの親と順番を記録
   const detachedInfo = new Map();
 
   function add(geometry, type) {
@@ -73,8 +72,6 @@ export function createObjectManager(scene) {
 
     let parent = info?.parent || scene;
 
-    // 親がシーンから切り離されている場合は
-    // いったんシーン直下に戻す
     if (parent !== scene && !scene.getObjectById(parent.id)) {
       parent = scene;
     }
@@ -113,8 +110,25 @@ export function createObjectManager(scene) {
 
   function select(object) {
     if (object && !objects.includes(object)) return;
-
     selectedObject = object || null;
+  }
+
+  function move(object, targetIndex) {
+    const fromIndex = objects.indexOf(object);
+
+    if (fromIndex === -1) return false;
+
+    const safeIndex = Math.max(
+      0,
+      Math.min(targetIndex, objects.length - 1)
+    );
+
+    if (fromIndex === safeIndex) return false;
+
+    objects.splice(fromIndex, 1);
+    objects.splice(safeIndex, 0, object);
+
+    return true;
   }
 
   return {
@@ -124,6 +138,7 @@ export function createObjectManager(scene) {
     restore,
     dispose,
     select,
+    move,
 
     getAll() {
       return [...objects];
