@@ -2,7 +2,8 @@
 export function createHierarchyDrag(
   container,
   onSetParent,
-  onRemoveParent
+  onRemoveParent,
+  onMove
 ) {
   let draggedObject = null;
 
@@ -22,6 +23,14 @@ export function createHierarchyDrag(
     button.addEventListener("dragend", () => {
       draggedObject = null;
       button.classList.remove("hierarchy-dragging");
+
+      container.querySelectorAll(".hierarchy-drop-before, .hierarchy-drop-after")
+        .forEach(element => {
+          element.classList.remove(
+            "hierarchy-drop-before",
+            "hierarchy-drop-after"
+          );
+        });
     });
 
     button.addEventListener("dragover", event => {
@@ -29,16 +38,49 @@ export function createHierarchyDrag(
 
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
+
+      const rect = button.getBoundingClientRect();
+      const position = event.clientY < rect.top + rect.height / 2
+        ? "before"
+        : "after";
+
+      button.classList.toggle("hierarchy-drop-before", position === "before");
+      button.classList.toggle("hierarchy-drop-after", position === "after");
+    });
+
+    button.addEventListener("dragleave", () => {
+      button.classList.remove(
+        "hierarchy-drop-before",
+        "hierarchy-drop-after"
+      );
     });
 
     button.addEventListener("drop", event => {
       event.preventDefault();
       event.stopPropagation();
 
+      button.classList.remove(
+        "hierarchy-drop-before",
+        "hierarchy-drop-after"
+      );
+
       if (!draggedObject || draggedObject === object) return;
 
-      onSetParent(draggedObject, object);
+      const source = draggedObject;
       draggedObject = null;
+
+      if (source.parent === object.parent) {
+        const rect = button.getBoundingClientRect();
+        const position = event.clientY < rect.top + rect.height / 2
+          ? "before"
+          : "after";
+
+        if (onMove) {
+          onMove(source, object, position);
+        }
+      } else {
+        onSetParent(source, object);
+      }
     });
   }
 
