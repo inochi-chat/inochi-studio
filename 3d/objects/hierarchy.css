@@ -1,0 +1,71 @@
+
+.hierarchy-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
+.hierarchy-item .object-item {
+  width: 100%;
+  text-align: left;
+  background: #29233f;
+  border: 1px solid #493b70;
+  color: #eee8ff;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.hierarchy-item .object-item:hover {
+  background: #493b70;
+}
+
+.hierarchy-item .object-item.selected {
+  background: #604b91;
+  border-color: #a48be8;
+}
+
+.hierarchy-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background: #211b35;
+  border: 1px solid #493b70;
+  border-radius: 8px;
+}
+
+.hierarchy-controls h3 {
+  margin: 0 0 6px;
+  color: #eee8ff;
+}
+
+.hierarchy-controls label {
+  font-size: 12px;
+  color: #c9bde8;
+}
+
+.hierarchy-controls select {
+  width: 100%;
+  padding: 8px;
+  color: #eee8ff;
+  background: #29233f;
+  border: 1px solid #604b91;
+  border-radius: 6px;
+}
+
+.hierarchy-controls button {
+  width: 100%;
+  padding: 9px;
+  color: white;
+  background: #493b70;
+  border: 1px solid #7964a8;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.hierarchy-controls button:hover {
+  background: #604b91;
+}
