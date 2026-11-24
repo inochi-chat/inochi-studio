@@ -1,6 +1,7 @@
 
 import { createHierarchyDrag } from "./hierarchy-drag.js";
 import { createVisibilityButton } from "./visibility-button.js";
+import { createLockButton } from "./lock-button.js";
 
 export function createHierarchyView(
   container,
@@ -11,7 +12,9 @@ export function createHierarchyView(
   onRemoveParent,
   onMove,
   visibility,
-  onVisibilityChange
+  onVisibilityChange,
+  objectLock,
+  onLockChange
 ) {
   const collapsedObjects = new Set();
 
@@ -85,10 +88,21 @@ export function createHierarchyView(
         onVisibilityChange
       );
 
+      const lockContainer = document.createElement("div");
+      lockContainer.className = "lock-container";
+
+      createLockButton(
+        lockContainer,
+        object,
+        objectLock,
+        onLockChange
+      );
+
       row.append(
         toggle,
         button,
-        visibilityContainer
+        visibilityContainer,
+        lockContainer
       );
 
       wrapper.appendChild(row);
