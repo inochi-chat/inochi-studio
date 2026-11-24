@@ -444,6 +444,69 @@
         font-size: 10px;
       }
     }
+
+    
+/* 階層ボタンの配置修正 */
+.hierarchy-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* オブジェクト名 */
+.hierarchy-row .object-item {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 4px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 表示ボタンの入れ物 */
+.hierarchy-row .visibility-container {
+  flex: 0 0 38px;
+  width: 38px;
+  min-width: 38px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* ロックボタンの入れ物 */
+.hierarchy-row .lock-container {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* 表示ボタン */
+.hierarchy-row .visibility-container button {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 3px 1px;
+  margin: 0;
+  font-size: 11px;
+}
+
+/* ロックボタン */
+.hierarchy-row .lock-container button {
+  width: 34px;
+  min-width: 34px;
+  height: 38px;
+  padding: 3px 1px;
+  margin: 0;
+}
+
+    
   </style>
 </head>
 
