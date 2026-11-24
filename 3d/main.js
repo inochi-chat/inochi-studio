@@ -12,6 +12,7 @@ import { createObjectList } from "./objects/object-list.js";
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
 import { createRotationEditor } from "./properties/rotation.js";
+import { createScaleEditor } from "./properties/scale.js";
 
 // ----------------------------------------
 // 1. エディター初期化
@@ -130,64 +131,7 @@ function selectObject(object) {
 }
 
 // ----------------------------------------
-// 7. 数値入力欄（サイズ用）
-// ----------------------------------------
-
-function makeNumberInput(label, value, onChange) {
-  const row = document.createElement("div");
-  row.className = "property-row";
-
-  const text = document.createElement("label");
-  text.textContent = label;
-
-  const input = document.createElement("input");
-  input.type = "number";
-  input.step = "0.1";
-  input.value = Number(value.toFixed(2));
-
-  input.addEventListener("change", () => {
-    const number = Number(input.value);
-
-    if (!Number.isFinite(number)) return;
-
-    onChange(number);
-    updateObjectList();
-  });
-
-  row.append(text, input);
-
-  return row;
-}
-
-// ----------------------------------------
-// 8. サイズ編集
-// ----------------------------------------
-
-function makeScaleEditor(object) {
-  const group = document.createElement("div");
-  group.className = "property-group";
-
-  const heading = document.createElement("h3");
-  heading.textContent = "サイズ";
-
-  group.appendChild(heading);
-
-  ["X", "Y", "Z"].forEach((axis, index) => {
-    const key = axis.toLowerCase();
-
-    group.appendChild(
-      makeNumberInput(axis, object.scale[key], (value) => {
-        object.scale.setComponent(index, value);
-        refreshProperties();
-      })
-    );
-  });
-
-  return group;
-}
-
-// ----------------------------------------
-// 9. プロパティ画面
+// 7. プロパティ画面
 // ----------------------------------------
 
 function refreshProperties() {
@@ -230,7 +174,11 @@ function refreshProperties() {
   );
 
   // サイズ
-  inner.appendChild(makeScaleEditor(object));
+  inner.appendChild(
+    createScaleEditor(object, () => {
+      updateObjectList();
+    })
+  );
 
   // カラー
   const colorGroup = document.createElement("div");
@@ -256,7 +204,7 @@ function refreshProperties() {
 }
 
 // ----------------------------------------
-// 10. 画面からオブジェクトを選択
+// 8. 画面からオブジェクトを選択
 // ----------------------------------------
 
 const raycaster = new THREE.Raycaster();
@@ -287,7 +235,7 @@ function selectAtPointer(event) {
 renderer.domElement.addEventListener("pointerdown", selectAtPointer);
 
 // ----------------------------------------
-// 11. ボタン接続
+// 9. ボタン接続
 // ----------------------------------------
 
 document.querySelector("#addCube")
@@ -318,7 +266,7 @@ document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
 
 // ----------------------------------------
-// 12. 描画ループ
+// 10. 描画ループ
 // ----------------------------------------
 
 function animate() {
@@ -331,7 +279,7 @@ function animate() {
 animate();
 
 // ----------------------------------------
-// 13. 初期オブジェクト
+// 11. 初期オブジェクト
 // ----------------------------------------
 
 addCube();
