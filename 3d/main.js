@@ -4,8 +4,10 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 
 import { initializeEditor } from "./core/editor-init.js";
+
 import { createGeometry } from "./objects/object-factory.js";
 import { createObjectManager } from "./objects/object-manager.js";
+import { createObjectList } from "./objects/object-list.js";
 
 // ----------------------------------------
 // 1. 3Dエディターの初期化
@@ -13,9 +15,9 @@ import { createObjectManager } from "./objects/object-manager.js";
 
 const canvas = document.querySelector("#threeCanvas");
 const propertyPanel = document.querySelector("#propertyPanel");
-const objectList = document.querySelector("#objectList");
+const objectListContainer = document.querySelector("#objectList");
 
-if (!canvas || !propertyPanel || !objectList) {
+if (!canvas || !propertyPanel || !objectListContainer) {
   throw new Error("3DエディターのHTML要素が見つかりません");
 }
 
@@ -27,8 +29,22 @@ const { scene, camera, renderer } = initializeEditor(canvas);
 
 const objectManager = createObjectManager(scene);
 
+const objectListView = createObjectList(
+  objectListContainer,
+  (object) => {
+    selectObject(object);
+  }
+);
+
 function getSelectedObject() {
   return objectManager.getSelected();
+}
+
+function updateObjectList() {
+  objectListView.render(
+    objectManager.getAll(),
+    getSelectedObject()
+  );
 }
 
 // ----------------------------------------
@@ -99,38 +115,16 @@ function deleteSelectedObject() {
 function selectObject(object) {
   objectManager.select(object);
 
-  if (object) {
-    transform.attach(object);
+  const selectedObject = getSelectedObject();
+
+  if (selectedObject) {
+    transform.attach(selectedObject);
   } else {
     transform.detach();
   }
 
   updateObjectList();
   refreshProperties();
-}
-
-function updateObjectList() {
-  objectList.innerHTML = "";
-
-  const objects = objectManager.getAll();
-  const selectedObject = getSelectedObject();
-
-  objects.forEach((object) => {
-    const item = document.createElement("button");
-
-    item.className = "object-item";
-    item.textContent = object.name;
-
-    if (object === selectedObject) {
-      item.classList.add("selected");
-    }
-
-    item.addEventListener("click", () => {
-      selectObject(object);
-    });
-
-    objectList.appendChild(item);
-  });
 }
 
 // ----------------------------------------
