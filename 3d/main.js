@@ -5,6 +5,7 @@ import { TransformControls } from "three/addons/controls/TransformControls.js";
 
 import { initializeEditor } from "./core/editor-init.js";
 import { createGeometry } from "./objects/object-factory.js";
+import { createObjectManager } from "./objects/object-manager.js";
 
 // ----------------------------------------
 // 1. 3Dエディターの初期化
@@ -21,7 +22,17 @@ if (!canvas || !propertyPanel || !objectList) {
 const { scene, camera, renderer } = initializeEditor(canvas);
 
 // ----------------------------------------
-// 2. カメラ操作
+// 2. オブジェクト管理
+// ----------------------------------------
+
+const objectManager = createObjectManager(scene);
+
+function getSelectedObject() {
+  return objectManager.getSelected();
+}
+
+// ----------------------------------------
+// 3. カメラ操作
 // ----------------------------------------
 
 const orbit = new OrbitControls(camera, renderer.domElement);
@@ -29,7 +40,7 @@ orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 
 // ----------------------------------------
-// 3. 変形ツール
+// 4. 変形ツール
 // ----------------------------------------
 
 const transform = new TransformControls(camera, renderer.domElement);
@@ -44,36 +55,17 @@ transform.addEventListener("mouseUp", () => {
 });
 
 // ----------------------------------------
-// 4. オブジェクト管理
+// 5. オブジェクトの追加・削除
 // ----------------------------------------
-
-const objects = [];
-let selectedObject = null;
-let objectCounter = 0;
 
 function addObject(geometry, type) {
   if (!geometry) return;
 
-  objectCounter++;
+  const object = objectManager.add(geometry, type);
 
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x9b83ff,
-    roughness: 0.55,
-    metalness: 0.05
-  });
-
-  const object = new THREE.Mesh(geometry, material);
-
-  object.name = `${type}_${objectCounter}`;
-  object.position.y = 0.5;
-  object.castShadow = true;
-  object.receiveShadow = true;
-
-  scene.add(object);
-  objects.push(object);
+  if (!object) return;
 
   selectObject(object);
-  updateObjectList();
 }
 
 function addCube() {
@@ -89,32 +81,23 @@ function addCylinder() {
 }
 
 function deleteSelectedObject() {
-  if (!selectedObject) return;
+  const object = getSelectedObject();
+
+  if (!object) return;
 
   transform.detach();
-  scene.remove(selectedObject);
-
-  selectedObject.geometry.dispose();
-
-  if (Array.isArray(selectedObject.material)) {
-    selectedObject.material.forEach((material) => material.dispose());
-  } else {
-    selectedObject.material.dispose();
-  }
-
-  objects.splice(objects.indexOf(selectedObject), 1);
-  selectedObject = null;
+  objectManager.remove(object);
 
   updateObjectList();
   refreshProperties();
 }
 
 // ----------------------------------------
-// 5. オブジェクト選択
+// 6. オブジェクト選択
 // ----------------------------------------
 
 function selectObject(object) {
-  selectedObject = object;
+  objectManager.select(object);
 
   if (object) {
     transform.attach(object);
@@ -128,6 +111,9 @@ function selectObject(object) {
 
 function updateObjectList() {
   objectList.innerHTML = "";
+
+  const objects = objectManager.getAll();
+  const selectedObject = getSelectedObject();
 
   objects.forEach((object) => {
     const item = document.createElement("button");
@@ -148,7 +134,7 @@ function updateObjectList() {
 }
 
 // ----------------------------------------
-// 6. プロパティ入力欄
+// 7. プロパティ入力欄
 // ----------------------------------------
 
 function makeNumberInput(label, value, onChange) {
@@ -211,6 +197,8 @@ function makeGroup(title, vector, onChange, isRotation = false) {
 
 function refreshProperties() {
   propertyPanel.innerHTML = "";
+
+  const selectedObject = getSelectedObject();
 
   if (!selectedObject) {
     const empty = document.createElement("p");
@@ -296,7 +284,7 @@ function refreshProperties() {
 }
 
 // ----------------------------------------
-// 7. 画面からオブジェクトを選択
+// 8. 画面からオブジェクトを選択
 // ----------------------------------------
 
 const raycaster = new THREE.Raycaster();
@@ -312,7 +300,10 @@ function selectAtPointer(event) {
 
   raycaster.setFromCamera(pointer, camera);
 
-  const hits = raycaster.intersectObjects(objects, false);
+  const hits = raycaster.intersectObjects(
+    objectManager.getAll(),
+    false
+  );
 
   if (hits.length > 0) {
     selectObject(hits[0].object);
@@ -324,7 +315,7 @@ function selectAtPointer(event) {
 renderer.domElement.addEventListener("pointerdown", selectAtPointer);
 
 // ----------------------------------------
-// 8. ボタン接続
+// 9. ボタン接続
 // ----------------------------------------
 
 document.querySelector("#addCube")
@@ -355,7 +346,7 @@ document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
 
 // ----------------------------------------
-// 9. 描画ループ
+// 10. 描画ループ
 // ----------------------------------------
 
 function animate() {
@@ -368,7 +359,7 @@ function animate() {
 animate();
 
 // ----------------------------------------
-// 10. 初期オブジェクト
+// 11. 初期オブジェクト
 // ----------------------------------------
 
 addCube();
