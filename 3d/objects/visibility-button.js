@@ -24,12 +24,13 @@ export function createVisibilityButton(
   }
 
   button.addEventListener("click", () => {
-    visibility.toggle(object);
-    update();
+    const newVisible = !visibility.isVisible(object);
 
     if (onChange) {
-      onChange(object);
+      onChange(object, newVisible);
     }
+
+    update();
   });
 
   update();
