@@ -26,13 +26,20 @@ export function createObjectSelection({
 
     raycaster.setFromCamera(pointer, camera);
 
+    // 親だけでなく、その子オブジェクトも調べる
     const hits = raycaster.intersectObjects(
       objectManager.getAll(),
-      false
+      true
     );
 
-    if (hits.length > 0) {
-      onSelect(hits[0].object);
+    const managedObjects = objectManager.getAll();
+
+    const selectedHit = hits.find(hit =>
+      managedObjects.includes(hit.object)
+    );
+
+    if (selectedHit) {
+      onSelect(selectedHit.object);
     } else {
       onSelect(null);
     }
