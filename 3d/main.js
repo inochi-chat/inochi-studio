@@ -22,6 +22,7 @@ import { createObjectSelection } from "./selection/object-selection.js";
 import { createMultiSelection } from "./selection/multi-selection.js";
 import { createMultiSelectionVisual } from "./selection/multi-selection-visual.js";
 import { createMultiSelectionController } from "./selection/multi-selection-controller.js";
+import { createMultiSelectionMode } from "./selection/multi-selection-mode.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 
@@ -58,6 +59,7 @@ const propertyPanel = document.querySelector("#propertyPanel");
 const objectListContainer = document.querySelector("#objectList");
 const hierarchyListContainer = document.querySelector("#hierarchyList");
 const hierarchyControlsContainer = document.querySelector("#hierarchyControls");
+const multiSelectionButton = document.querySelector("#multiSelectionButton");
 
 if (
   !canvas ||
@@ -83,13 +85,7 @@ const history = createHistoryManager(100);
 // 4. 複数選択システム
 const multiSelection = createMultiSelection();
 const multiSelectionVisual = createMultiSelectionVisual();
-
-const multiSelectionController = createMultiSelectionController({
-  multiSelection,
-  visual: multiSelectionVisual,
-  objectManager,
-  objectLock
-});
+const multiSelectionMode = createMultiSelectionMode();
 
 function getSelectedObject() {
   return objectManager.getSelected();
@@ -136,7 +132,43 @@ transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
 
-// 8. プロパティ表示
+// 8. メイン選択の更新
+function selectPrimaryObject(object) {
+  if (object && objectLock.isLocked(object)) {
+    object = null;
+  }
+
+  objectManager.select(object);
+
+  const selectedObject = getSelectedObject();
+
+  if (selectedObject) {
+    transform.attach(selectedObject);
+  } else {
+    transform.detach();
+  }
+
+  refreshEditorUI();
+  refreshProperties();
+}
+
+// 9. 複数選択の管理
+const multiSelectionController = createMultiSelectionController({
+  multiSelection,
+  visual: multiSelectionVisual,
+  objectManager,
+  objectLock,
+  onChange(selectedObjects) {
+    selectPrimaryObject(selectedObjects[0] ?? null);
+  }
+});
+
+// 10. 通常の単体選択
+function selectObject(object) {
+  multiSelectionController.select(object, false);
+}
+
+// 11. プロパティ表示
 function refreshProperties() {
   propertyPanel.innerHTML = "";
 
@@ -164,45 +196,13 @@ function refreshProperties() {
   propertyPanel.appendChild(inner);
 }
 
-// 9. 選択中のメインオブジェクトを更新
-function selectPrimaryObject(object) {
-  if (object && objectLock.isLocked(object)) {
-    object = null;
-  }
-
-  objectManager.select(object);
-
-  const selectedObject = getSelectedObject();
-
-  if (selectedObject) {
-    transform.attach(selectedObject);
-  } else {
-    transform.detach();
-  }
-
-  refreshEditorUI();
-  refreshProperties();
-}
-
-// 10. 通常の単体選択
-function selectObject(object) {
-  multiSelectionController.clear();
-
-  if (object && !objectLock.isLocked(object)) {
-    multiSelection.add(object);
-    multiSelectionVisual.add(object);
-  }
-
-  selectPrimaryObject(object);
-}
-
-// 11. オブジェクト一覧
+// 12. オブジェクト一覧
 objectListView = createObjectList(
   objectListContainer,
   selectObject
 );
 
-// 12. 階層UI
+// 13. 階層UI
 hierarchyUI = createHierarchyUI({
   listContainer: hierarchyListContainer,
   controlsContainer: hierarchyControlsContainer,
@@ -218,12 +218,12 @@ hierarchyUI = createHierarchyUI({
   onLockChange: handleLockChange
 });
 
-// 13. 履歴変更時
+// 14. 履歴変更時
 function onHistoryChange(object) {
   selectObject(object);
 }
 
-// 14. オブジェクト追加
+// 15. オブジェクト追加
 function addObject(type) {
   const geometry = createGeometry(type);
 
@@ -251,7 +251,7 @@ function addCylinder() {
   addObject("cylinder");
 }
 
-// 15. オブジェクト削除
+// 16. オブジェクト削除
 function deleteSelectedObject() {
   const object = getSelectedObject();
 
@@ -276,7 +276,7 @@ function deleteSelectedObject() {
   history.execute(command);
 }
 
-// 16. オブジェクト複製
+// 17. オブジェクト複製
 function duplicateSelectedObject(object) {
   if (!object) return;
 
@@ -305,7 +305,7 @@ createDuplicateButton({
   onDuplicate: duplicateSelectedObject
 });
 
-// 17. 親子関係の設定
+// 18. 親子関係の設定
 function setObjectParent(child, parent) {
   if (!hierarchy.canSetParent(child, parent)) {
     alert("この親子関係は設定できません。");
@@ -327,7 +327,7 @@ function setObjectParent(child, parent) {
   }
 }
 
-// 18. 親子関係の解除
+// 19. 親子関係の解除
 function removeObjectParent(child) {
   const command = createRemoveParentCommand(
     hierarchy,
@@ -343,7 +343,7 @@ function removeObjectParent(child) {
   }
 }
 
-// 19. 階層の並び替え
+// 20. 階層の並び替え
 function moveHierarchyObject(object, target, position) {
   if (!hierarchyOrder.canMove(object, target)) {
     return;
@@ -377,7 +377,7 @@ function moveHierarchyObject(object, target, position) {
   }
 }
 
-// 20. 表示・非表示の変更
+// 21. 表示・非表示の変更
 function handleVisibilityChange(object, newVisible) {
   const command = createVisibilityCommand(
     visibility,
@@ -391,7 +391,7 @@ function handleVisibilityChange(object, newVisible) {
   }
 }
 
-// 21. ロック・ロック解除
+// 22. ロック・ロック解除
 function handleLockChange(object, newLocked) {
   const command = createLockCommand(
     objectLock,
@@ -400,9 +400,12 @@ function handleLockChange(object, newLocked) {
     () => {
       if (
         objectLock.isLocked(object) &&
-        getSelectedObject() === object
+        multiSelection.has(object)
       ) {
-        selectObject(null);
+        multiSelectionController.select(
+          getSelectedObject() === object ? null : getSelectedObject(),
+          false
+        );
       } else {
         refreshEditorUI();
       }
@@ -414,7 +417,37 @@ function handleLockChange(object, newLocked) {
   }
 }
 
-// 22. Undo・Redo
+// 23. 複数選択モードボタン
+function updateMultiSelectionButton() {
+  if (!multiSelectionButton) return;
+
+  const enabled = multiSelectionMode.isEnabled();
+
+  multiSelectionButton.textContent = enabled
+    ? "☑ 複数選択：ON"
+    : "☐ 複数選択：OFF";
+
+  multiSelectionButton.classList.toggle("active", enabled);
+}
+
+multiSelectionButton?.addEventListener("click", () => {
+  const enabled = multiSelectionMode.toggle();
+
+  if (!enabled) {
+    const selectedObjects = multiSelection.getAll();
+
+    multiSelectionController.select(
+      selectedObjects[0] ?? null,
+      false
+    );
+  }
+
+  updateMultiSelectionButton();
+});
+
+updateMultiSelectionButton();
+
+// 24. Undo・Redo
 function undo() {
   history.undo();
 }
@@ -423,7 +456,7 @@ function redo() {
   history.redo();
 }
 
-// 23. 3D画面からの選択
+// 25. 3D画面からの選択
 createObjectSelection({
   camera,
   renderer,
@@ -431,12 +464,11 @@ createObjectSelection({
   transform,
   objectLock,
   multiSelectionController,
-
-  // 複数選択の先頭をメイン選択にする
-  onSelect: selectPrimaryObject
+  multiSelectionMode,
+  onSelect: selectObject
 });
 
-// 24. ボタン接続
+// 26. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -470,7 +502,7 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// 25. キーボードショートカット
+// 27. キーボードショートカット
 document.addEventListener("keydown", event => {
   const target = event.target;
 
@@ -500,7 +532,7 @@ document.addEventListener("keydown", event => {
   }
 });
 
-// 26. 初期キューブ
+// 28. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
 
 const initialCube = objectManager.add(
@@ -512,13 +544,11 @@ if (initialCube) {
   selectObject(initialCube);
 }
 
-// 27. 描画ループ
+// 29. 描画ループ
 function animate() {
   requestAnimationFrame(animate);
 
   orbit.update();
-
-  // 複数選択の枠を更新
   multiSelectionVisual.update();
 
   renderer.render(scene, camera);
