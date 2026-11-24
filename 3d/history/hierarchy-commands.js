@@ -5,6 +5,11 @@ export function createSetParentCommand(
   newParent,
   onChange
 ) {
+  // 不正な親子関係は履歴に登録しない
+  if (!hierarchy.canSetParent(child, newParent)) {
+    return null;
+  }
+
   const oldParent = hierarchy.getParent(child);
 
   return {
@@ -33,11 +38,12 @@ export function createRemoveParentCommand(
 ) {
   const oldParent = hierarchy.getParent(child);
 
+  // 親がいない場合は解除コマンドを作らない
+  if (!oldParent) return null;
+
   return {
     undo() {
-      if (oldParent) {
-        hierarchy.setParent(child, oldParent);
-      }
+      hierarchy.setParent(child, oldParent);
 
       if (onChange) onChange(child);
     },
