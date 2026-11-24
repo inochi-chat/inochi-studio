@@ -37,6 +37,10 @@ import {
   createMoveHierarchyObjectCommand
 } from "./history/hierarchy-order-commands.js";
 
+import {
+  createVisibilityCommand
+} from "./history/visibility-command.js";
+
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
 // 1. HTML要素
@@ -254,7 +258,7 @@ createDuplicateButton({
 // 15. 親子関係の設定
 function setObjectParent(child, parent) {
   if (!hierarchy.canSetParent(child, parent)) {
-    alert("この親子関係は設定できません。循環する関係になっていないか確認してください。");
+    alert("この親子関係は設定できません。");
     return;
   }
 
@@ -315,9 +319,7 @@ function moveHierarchyObject(object, target, position) {
     hierarchyOrder,
     object,
     newIndex,
-    () => {
-      refreshEditorUI();
-    }
+    refreshEditorUI
   );
 
   if (command) {
@@ -326,10 +328,17 @@ function moveHierarchyObject(object, target, position) {
 }
 
 // 18. 表示・非表示の変更
-function handleVisibilityChange(object) {
-  if (!object) return;
+function handleVisibilityChange(object, newVisible) {
+  const command = createVisibilityCommand(
+    visibility,
+    object,
+    newVisible,
+    refreshEditorUI
+  );
 
-  refreshEditorUI();
+  if (command) {
+    history.execute(command);
+  }
 }
 
 // 19. Undo・Redo
