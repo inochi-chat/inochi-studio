@@ -10,6 +10,7 @@ import { createHierarchyUI } from "./objects/hierarchy-ui.js";
 import { createObjectHierarchy } from "./objects/object-hierarchy.js";
 import { createHierarchyOrder } from "./objects/hierarchy-order.js";
 import { createObjectVisibility } from "./objects/object-visibility.js";
+import { createObjectLock } from "./objects/object-lock.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -41,6 +42,10 @@ import {
   createVisibilityCommand
 } from "./history/visibility-command.js";
 
+import {
+  createLockCommand
+} from "./history/lock-command.js";
+
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
 // 1. HTML要素
@@ -68,6 +73,7 @@ const objectManager = createObjectManager(scene);
 const hierarchy = createObjectHierarchy(scene, objectManager);
 const hierarchyOrder = createHierarchyOrder(objectManager, scene);
 const visibility = createObjectVisibility();
+const objectLock = createObjectLock();
 const history = createHistoryManager(100);
 
 function getSelectedObject() {
@@ -107,7 +113,8 @@ const transform = createTransformTool(
   camera,
   renderer,
   scene,
-  orbit
+  orbit,
+  objectLock
 );
 
 transform.addEventListener("mouseUp", () => {
@@ -144,6 +151,10 @@ function refreshProperties() {
 
 // 8. オブジェクト選択
 function selectObject(object) {
+  if (object && objectLock.isLocked(object)) {
+    object = null;
+  }
+
   objectManager.select(object);
 
   const selectedObject = getSelectedObject();
@@ -175,7 +186,9 @@ hierarchyUI = createHierarchyUI({
   onRemoveParent: removeObjectParent,
   onMove: moveHierarchyObject,
   visibility,
-  onVisibilityChange: handleVisibilityChange
+  onVisibilityChange: handleVisibilityChange,
+  objectLock,
+  onLockChange: handleLockChange
 });
 
 // 11. 履歴変更時
@@ -217,6 +230,11 @@ function deleteSelectedObject() {
 
   if (!object) return;
 
+  if (objectLock.isLocked(object)) {
+    alert("ロック中のオブジェクトは削除できません。");
+    return;
+  }
+
   if (hierarchy.hasChildren(object)) {
     alert("子オブジェクトがあるため、先に親子関係を解除してください。");
     return;
@@ -234,6 +252,11 @@ function deleteSelectedObject() {
 // 14. オブジェクト複製
 function duplicateSelectedObject(object) {
   if (!object) return;
+
+  if (objectLock.isLocked(object)) {
+    alert("ロック中のオブジェクトは複製できません。");
+    return;
+  }
 
   if (hierarchy.hasChildren(object)) {
     alert("子オブジェクトがあるため、現在は複製できません。");
@@ -341,7 +364,30 @@ function handleVisibilityChange(object, newVisible) {
   }
 }
 
-// 19. Undo・Redo
+// 19. ロック・ロック解除
+function handleLockChange(object, newLocked) {
+  const command = createLockCommand(
+    objectLock,
+    object,
+    newLocked,
+    () => {
+      if (
+        objectLock.isLocked(object) &&
+        getSelectedObject() === object
+      ) {
+        selectObject(null);
+      } else {
+        refreshEditorUI();
+      }
+    }
+  );
+
+  if (command) {
+    history.execute(command);
+  }
+}
+
+// 20. Undo・Redo
 function undo() {
   history.undo();
 }
@@ -350,16 +396,17 @@ function redo() {
   history.redo();
 }
 
-// 20. 3D画面からの選択
+// 21. 3D画面からの選択
 createObjectSelection({
   camera,
   renderer,
   objectManager,
   transform,
+  objectLock,
   onSelect: selectObject
 });
 
-// 21. ボタン接続
+// 22. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -393,7 +440,7 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// 22. キーボードショートカット
+// 23. キーボードショートカット
 document.addEventListener("keydown", event => {
   const target = event.target;
 
@@ -423,7 +470,7 @@ document.addEventListener("keydown", event => {
   }
 });
 
-// 23. 初期キューブ
+// 24. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
 
 const initialCube = objectManager.add(
@@ -435,7 +482,7 @@ if (initialCube) {
   selectObject(initialCube);
 }
 
-// 24. 描画ループ
+// 25. 描画ループ
 function animate() {
   requestAnimationFrame(animate);
 
