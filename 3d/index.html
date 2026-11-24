@@ -208,8 +208,6 @@
       .history-buttons button { font-size: 10px; }
     }
 
-    
-
 /* オブジェクト階層 */
 .hierarchy-item {
   display: flex;
@@ -282,6 +280,38 @@
   background: #604b91;
 }
 
+    
+.hierarchy-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+}
+
+.hierarchy-row .hierarchy-toggle {
+  flex: 0 0 26px;
+  width: 26px;
+  padding: 6px 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: #c9b5ff;
+  font-size: 11px;
+}
+
+.hierarchy-row .hierarchy-toggle:disabled {
+  opacity: 0.25;
+}
+
+.hierarchy-row .object-item {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
   </style>
 </head>
