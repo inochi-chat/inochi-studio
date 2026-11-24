@@ -155,9 +155,8 @@ function onHistoryChange(object) {
 // 9. オブジェクト追加
 // ----------------------------------------
 
-
 function addObject(type) {
-  const geometry = createGeometry(type.toLowerCase());
+  const geometry = createGeometry(type);
 
   if (!geometry) return;
 
@@ -172,17 +171,16 @@ function addObject(type) {
 }
 
 function addCube() {
-  addObject("Cube");
+  addObject("cube");
 }
 
 function addSphere() {
-  addObject("Sphere");
+  addObject("sphere");
 }
 
 function addCylinder() {
-  addObject("Cylinder");
+  addObject("cylinder");
 }
-
 
 // ----------------------------------------
 // 10. オブジェクト削除
