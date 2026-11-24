@@ -204,17 +204,31 @@ function deleteSelectedObject() {
 // 11. Undo・Redo
 // ----------------------------------------
 
+
 function undo() {
-  if (history.undo()) {
-    console.log("Undo:", history.undoCount);
-  }
+  alert("Undoボタンが押されました！\n履歴数: " + history.undoCount);
+
+  const result = history.undo();
+
+  alert(
+    "Undo実行結果: " + result +
+    "\n残りの履歴: " + history.undoCount +
+    "\nオブジェクト数: " + objectManager.getCount()
+  );
 }
 
 function redo() {
-  if (history.redo()) {
-    console.log("Redo:", history.redoCount);
-  }
+  alert("Redoボタンが押されました！\n履歴数: " + history.redoCount);
+
+  const result = history.redo();
+
+  alert(
+    "Redo実行結果: " + result +
+    "\n残りの履歴: " + history.redoCount +
+    "\nオブジェクト数: " + objectManager.getCount()
+  );
 }
+
 
 // ----------------------------------------
 // 12. 画面上のオブジェクト選択
