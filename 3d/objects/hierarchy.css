@@ -26,29 +26,37 @@
   border-color: #a48be8;
 }
 
+/* 階層コマンド */
 .hierarchy-controls {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   margin-top: 16px;
   padding: 12px;
   background: #211b35;
   border: 1px solid #493b70;
   border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hierarchy-controls h3 {
+  width: 100%;
+  text-align: left;
   margin: 0 0 6px;
   color: #eee8ff;
 }
 
 .hierarchy-controls label {
+  align-self: flex-start;
   font-size: 12px;
   color: #c9bde8;
 }
 
 .hierarchy-controls select {
   width: 100%;
+  box-sizing: border-box;
   padding: 8px;
   color: #eee8ff;
   background: #29233f;
@@ -57,8 +65,11 @@
 }
 
 .hierarchy-controls button {
+  align-self: flex-start;
   width: 100%;
+  box-sizing: border-box;
   padding: 9px;
+  text-align: left;
   color: white;
   background: #493b70;
   border: 1px solid #7964a8;
