@@ -9,6 +9,8 @@ import { createGeometry } from "./objects/object-factory.js";
 import { createObjectManager } from "./objects/object-manager.js";
 import { createObjectList } from "./objects/object-list.js";
 
+import { createNameEditor } from "./properties/name.js";
+
 // ----------------------------------------
 // 1. 3Dエディターの初期化
 // ----------------------------------------
@@ -189,6 +191,10 @@ function makeGroup(title, vector, onChange, isRotation = false) {
   return group;
 }
 
+// ----------------------------------------
+// 8. プロパティ画面の更新
+// ----------------------------------------
+
 function refreshProperties() {
   propertyPanel.innerHTML = "";
 
@@ -210,34 +216,21 @@ function refreshProperties() {
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
-  const nameHeading = document.createElement("h3");
-  nameHeading.textContent = "名前";
-
-  inner.appendChild(nameHeading);
-
-  const nameInput = document.createElement("input");
-  nameInput.className = "property-name";
-  nameInput.value = object.name;
-
-  nameInput.addEventListener("change", () => {
-    const newName = nameInput.value.trim();
-
-    if (newName) {
-      object.name = newName;
+  // 名前編集
+  inner.appendChild(
+    createNameEditor(object, () => {
       updateObjectList();
-    } else {
-      nameInput.value = object.name;
-    }
-  });
+    })
+  );
 
-  inner.appendChild(nameInput);
-
+  // 位置
   inner.appendChild(
     makeGroup("位置", object.position, (index, value) => {
       object.position.setComponent(index, value);
     })
   );
 
+  // 回転
   inner.appendChild(
     makeGroup(
       "回転（度）",
@@ -249,12 +242,14 @@ function refreshProperties() {
     )
   );
 
+  // サイズ
   inner.appendChild(
     makeGroup("サイズ", object.scale, (index, value) => {
       object.scale.setComponent(index, value);
     })
   );
 
+  // カラー
   const colorGroup = document.createElement("div");
   colorGroup.className = "property-group";
 
@@ -278,7 +273,7 @@ function refreshProperties() {
 }
 
 // ----------------------------------------
-// 8. 画面からオブジェクトを選択
+// 9. 画面からオブジェクトを選択
 // ----------------------------------------
 
 const raycaster = new THREE.Raycaster();
@@ -309,7 +304,7 @@ function selectAtPointer(event) {
 renderer.domElement.addEventListener("pointerdown", selectAtPointer);
 
 // ----------------------------------------
-// 9. ボタン接続
+// 10. ボタン接続
 // ----------------------------------------
 
 document.querySelector("#addCube")
@@ -340,7 +335,7 @@ document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
 
 // ----------------------------------------
-// 10. 描画ループ
+// 11. 描画ループ
 // ----------------------------------------
 
 function animate() {
@@ -353,7 +348,7 @@ function animate() {
 animate();
 
 // ----------------------------------------
-// 11. 初期オブジェクト
+// 12. 初期オブジェクト
 // ----------------------------------------
 
 addCube();
