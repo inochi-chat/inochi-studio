@@ -2,7 +2,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
+
 import { initializeEditor } from "./core/editor-init.js";
+import { createGeometry } from "./objects/object-factory.js";
 
 // ----------------------------------------
 // 1. 3Dエディターの初期化
@@ -50,6 +52,8 @@ let selectedObject = null;
 let objectCounter = 0;
 
 function addObject(geometry, type) {
+  if (!geometry) return;
+
   objectCounter++;
 
   const material = new THREE.MeshStandardMaterial({
@@ -73,18 +77,15 @@ function addObject(geometry, type) {
 }
 
 function addCube() {
-  addObject(new THREE.BoxGeometry(1, 1, 1), "Cube");
+  addObject(createGeometry("cube"), "Cube");
 }
 
 function addSphere() {
-  addObject(new THREE.SphereGeometry(0.7, 32, 24), "Sphere");
+  addObject(createGeometry("sphere"), "Sphere");
 }
 
 function addCylinder() {
-  addObject(
-    new THREE.CylinderGeometry(0.6, 0.6, 1.5, 32),
-    "Cylinder"
-  );
+  addObject(createGeometry("cylinder"), "Cylinder");
 }
 
 function deleteSelectedObject() {
