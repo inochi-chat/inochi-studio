@@ -1,12 +1,10 @@
 
-export function createObjectHierarchy() {
+export function createObjectHierarchy(scene) {
   function setParent(child, parent) {
     if (!child || !parent) return false;
-
-    // 自分自身を親にはできない
     if (child === parent) return false;
 
-    // 子を親にすると循環する場合は禁止
+    // 循環する親子関係を防止
     let current = parent;
 
     while (current) {
@@ -14,18 +12,19 @@ export function createObjectHierarchy() {
       current = current.parent;
     }
 
-    parent.add(child);
+    // ワールド座標を維持して親を変更
+    parent.attach(child);
 
     return true;
   }
 
-  function removeParent(object, scene) {
-    if (!object || !object.parent) return;
+  function removeParent(object) {
+    if (!object || !object.parent) return false;
 
-    const parent = object.parent;
+    // ワールド座標を維持して親子関係を解除
+    scene.attach(object);
 
-    parent.remove(object);
-    scene.add(object);
+    return true;
   }
 
   function getChildren(object) {
@@ -34,7 +33,7 @@ export function createObjectHierarchy() {
     return [...object.children];
   }
 
-  function getParent(object, scene) {
+  function getParent(object) {
     if (!object || object.parent === scene) {
       return null;
     }
