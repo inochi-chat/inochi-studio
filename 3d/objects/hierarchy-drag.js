@@ -1,10 +1,6 @@
 
-export function createHierarchyDrag(onSetParent) {
+export function createHierarchyDrag(onSetParent, onRemoveParent) {
   let draggedObject = null;
-
-  function getObjectFromElement(element) {
-    return element.closest("[data-object-uuid]");
-  }
 
   function makeDraggable(button, object) {
     button.draggable = true;
@@ -33,6 +29,7 @@ export function createHierarchyDrag(onSetParent) {
 
     button.addEventListener("drop", event => {
       event.preventDefault();
+      event.stopPropagation();
 
       if (!draggedObject || draggedObject === object) return;
 
@@ -40,6 +37,30 @@ export function createHierarchyDrag(onSetParent) {
       draggedObject = null;
     });
   }
+
+  function enableRootDrop(container) {
+    container.addEventListener("dragover", event => {
+      if (!draggedObject) return;
+
+      if (event.target.closest(".hierarchy-row")) return;
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    });
+
+    container.addEventListener("drop", event => {
+      if (!draggedObject) return;
+
+      if (event.target.closest(".hierarchy-row")) return;
+
+      event.preventDefault();
+
+      onRemoveParent(draggedObject);
+      draggedObject = null;
+    });
+  }
+
+  enableRootDrop(container);
 
   return { makeDraggable };
 }
