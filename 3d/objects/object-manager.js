@@ -7,7 +7,9 @@ export function createObjectManager(scene) {
   let selectedObject = null;
   let objectCounter = 0;
 
-  // オブジェクト追加
+  // 取り外したオブジェクトの親と順番を記録
+  const detachedInfo = new Map();
+
   function add(geometry, type) {
     if (!geometry) return null;
 
@@ -32,14 +34,21 @@ export function createObjectManager(scene) {
     return object;
   }
 
-  // 一時的にシーンから外す
   function detach(object) {
     if (!object) return;
 
     const index = objects.indexOf(object);
     if (index === -1) return;
 
-    scene.remove(object);
+    detachedInfo.set(object, {
+      parent: object.parent || scene,
+      index
+    });
+
+    if (object.parent) {
+      object.parent.remove(object);
+    }
+
     objects.splice(index, 1);
 
     if (selectedObject === object) {
@@ -47,27 +56,40 @@ export function createObjectManager(scene) {
     }
   }
 
-  // オブジェクトを復元
-  function restore(object, index = objects.length) {
+  function restore(object, index) {
     if (!object || objects.includes(object)) return;
+
+    const info = detachedInfo.get(object);
 
     const safeIndex = Math.max(
       0,
-      Math.min(index, objects.length)
+      Math.min(
+        index ?? info?.index ?? objects.length,
+        objects.length
+      )
     );
 
     objects.splice(safeIndex, 0, object);
-    scene.add(object);
+
+    let parent = info?.parent || scene;
+
+    // 親がシーンから切り離されている場合は
+    // いったんシーン直下に戻す
+    if (parent !== scene && !scene.getObjectById(parent.id)) {
+      parent = scene;
+    }
+
+    parent.add(object);
+    detachedInfo.delete(object);
   }
 
-  // 完全削除・メモリ解放
   function dispose(object) {
     if (!object) return;
 
     if (objects.includes(object)) {
       detach(object);
-    } else {
-      scene.remove(object);
+    } else if (object.parent) {
+      object.parent.remove(object);
     }
 
     if (object.geometry) {
@@ -75,9 +97,7 @@ export function createObjectManager(scene) {
     }
 
     if (Array.isArray(object.material)) {
-      object.material.forEach((material) => {
-        material.dispose();
-      });
+      object.material.forEach(material => material.dispose());
     } else if (object.material) {
       object.material.dispose();
     }
@@ -87,12 +107,10 @@ export function createObjectManager(scene) {
     }
   }
 
-  // 従来の削除機能
   function remove(object) {
     dispose(object);
   }
 
-  // 選択
   function select(object) {
     if (object && !objects.includes(object)) return;
 
