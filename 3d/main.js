@@ -20,13 +20,13 @@ import { createHistoryManager } from "./history/history-manager.js";
 
 import {
   createAddObjectCommand,
-  createDeleteObjectCommand
+  createDeleteObjectCommand,
+  createDuplicateObjectCommand
 } from "./history/object-commands.js";
 
-// ----------------------------------------
-// 1. エディター初期化
-// ----------------------------------------
+import { createDuplicateButton } from "./objects/duplicate-button.js";
 
+// 1. 初期化
 const canvas = document.querySelector("#threeCanvas");
 const propertyPanel = document.querySelector("#propertyPanel");
 const objectListContainer = document.querySelector("#objectList");
@@ -37,16 +37,16 @@ if (!canvas || !propertyPanel || !objectListContainer) {
 
 const { scene, camera, renderer } = initializeEditor(canvas);
 
-// ----------------------------------------
-// 2. オブジェクト管理
-// ----------------------------------------
-
+// 2. 管理システム
 const objectManager = createObjectManager(scene);
 const history = createHistoryManager(100);
 
 function getSelectedObject() {
   return objectManager.getSelected();
 }
+
+// 3. オブジェクト一覧
+let objectListView;
 
 function updateObjectList() {
   objectListView.render(
@@ -55,18 +55,12 @@ function updateObjectList() {
   );
 }
 
-// ----------------------------------------
-// 3. カメラ操作
-// ----------------------------------------
-
+// 4. カメラ操作
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 
-// ----------------------------------------
-// 4. 変形ツール
-// ----------------------------------------
-
+// 5. 変形ツール
 const transform = createTransformTool(
   camera,
   renderer,
@@ -78,10 +72,7 @@ transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
 
-// ----------------------------------------
-// 5. プロパティ画面
-// ----------------------------------------
-
+// 6. プロパティ表示
 function refreshProperties() {
   propertyPanel.innerHTML = "";
 
@@ -108,17 +99,22 @@ function refreshProperties() {
     createPositionEditor(object, updateObjectList)
   );
 
-  inner.appendChild(createRotationEditor(object));
-  inner.appendChild(createScaleEditor(object));
-  inner.appendChild(createColorEditor(object));
+  inner.appendChild(
+    createRotationEditor(object)
+  );
+
+  inner.appendChild(
+    createScaleEditor(object)
+  );
+
+  inner.appendChild(
+    createColorEditor(object)
+  );
 
   propertyPanel.appendChild(inner);
 }
 
-// ----------------------------------------
-// 6. オブジェクト選択
-// ----------------------------------------
-
+// 7. 選択処理
 function selectObject(object) {
   objectManager.select(object);
 
@@ -134,27 +130,18 @@ function selectObject(object) {
   refreshProperties();
 }
 
-// ----------------------------------------
-// 7. オブジェクト一覧
-// ----------------------------------------
-
-const objectListView = createObjectList(
+// 8. オブジェクト一覧の接続
+objectListView = createObjectList(
   objectListContainer,
   selectObject
 );
 
-// ----------------------------------------
-// 8. 履歴変更後の画面更新
-// ----------------------------------------
-
+// 9. 履歴変更時の処理
 function onHistoryChange(object) {
   selectObject(object);
 }
 
-// ----------------------------------------
-// 9. オブジェクト追加
-// ----------------------------------------
-
+// 10. オブジェクト追加
 function addObject(type) {
   const geometry = createGeometry(type);
 
@@ -182,10 +169,7 @@ function addCylinder() {
   addObject("cylinder");
 }
 
-// ----------------------------------------
-// 10. オブジェクト削除
-// ----------------------------------------
-
+// 11. オブジェクト削除
 function deleteSelectedObject() {
   const object = getSelectedObject();
 
@@ -200,40 +184,34 @@ function deleteSelectedObject() {
   history.execute(command);
 }
 
-// ----------------------------------------
-// 11. Undo・Redo
-// ----------------------------------------
-
-
-function undo() {
-  alert("Undoボタンが押されました！\n履歴数: " + history.undoCount);
-
-  const result = history.undo();
-
-  alert(
-    "Undo実行結果: " + result +
-    "\n残りの履歴: " + history.undoCount +
-    "\nオブジェクト数: " + objectManager.getCount()
+// 12. オブジェクト複製
+function duplicateSelectedObject(object) {
+  const command = createDuplicateObjectCommand(
+    objectManager,
+    object,
+    onHistoryChange
   );
+
+  history.execute(command);
+}
+
+// 複製ボタン接続
+createDuplicateButton({
+  button: document.querySelector("#duplicateObject"),
+  getSelectedObject,
+  onDuplicate: duplicateSelectedObject
+});
+
+// 13. Undo・Redo
+function undo() {
+  history.undo();
 }
 
 function redo() {
-  alert("Redoボタンが押されました！\n履歴数: " + history.redoCount);
-
-  const result = history.redo();
-
-  alert(
-    "Redo実行結果: " + result +
-    "\n残りの履歴: " + history.redoCount +
-    "\nオブジェクト数: " + objectManager.getCount()
-  );
+  history.redo();
 }
 
-
-// ----------------------------------------
-// 12. 画面上のオブジェクト選択
-// ----------------------------------------
-
+// 14. オブジェクト選択
 createObjectSelection({
   camera,
   renderer,
@@ -242,11 +220,7 @@ createObjectSelection({
   onSelect: selectObject
 });
 
-
-// ----------------------------------------
-// 13. ボタン接続
-// ----------------------------------------
-
+// 15. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -274,18 +248,13 @@ document.querySelector("#scaleTool")
 document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
 
-// Undoボタン
 document.querySelector("#undoButton")
   ?.addEventListener("click", undo);
 
-// Redoボタン
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// ----------------------------------------
-// 14. キーボードショートカット
-// ----------------------------------------
-
+// 16. キーボードショートカット
 document.addEventListener("keydown", (event) => {
   const target = event.target;
 
@@ -315,10 +284,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// ----------------------------------------
-// 15. 描画ループ
-// ----------------------------------------
-
+// 17. 描画ループ
 function animate() {
   requestAnimationFrame(animate);
 
@@ -328,24 +294,13 @@ function animate() {
 
 animate();
 
-
-// ----------------------------------------
-// 16. 初期オブジェクト
-// ----------------------------------------
-
-
+// 18. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
-
-console.log("① Geometry:", initialCubeGeometry);
 
 const initialCube = objectManager.add(
   initialCubeGeometry,
   "Cube"
 );
-
-console.log("② Object:", initialCube);
-console.log("③ Scene children:", scene.children);
-console.log("④ Object count:", objectManager.getCount());
 
 if (initialCube) {
   selectObject(initialCube);
