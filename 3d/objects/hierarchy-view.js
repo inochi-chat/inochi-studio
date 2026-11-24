@@ -1,5 +1,6 @@
 
 import { createHierarchyDrag } from "./hierarchy-drag.js";
+import { createVisibilityButton } from "./visibility-button.js";
 
 export function createHierarchyView(
   container,
@@ -8,7 +9,9 @@ export function createHierarchyView(
   onSelect,
   onSetParent,
   onRemoveParent,
-  onMove
+  onMove,
+  visibility,
+  onVisibilityChange
 ) {
   const collapsedObjects = new Set();
 
@@ -39,6 +42,7 @@ export function createHierarchyView(
 
       const toggle = document.createElement("button");
       toggle.className = "hierarchy-toggle";
+
       toggle.textContent = hasChildren
         ? (collapsedObjects.has(object) ? "▶" : "▼")
         : "";
@@ -71,12 +75,29 @@ export function createHierarchyView(
 
       hierarchyDrag.makeDraggable(button, object);
 
-      row.append(toggle, button);
+      const visibilityContainer = document.createElement("div");
+      visibilityContainer.className = "visibility-container";
+
+      createVisibilityButton(
+        visibilityContainer,
+        object,
+        visibility,
+        onVisibilityChange
+      );
+
+      row.append(
+        toggle,
+        button,
+        visibilityContainer
+      );
+
       wrapper.appendChild(row);
 
       if (hasChildren && !collapsedObjects.has(object)) {
         children.forEach(child => {
-          wrapper.appendChild(createItem(child, depth + 1));
+          wrapper.appendChild(
+            createItem(child, depth + 1)
+          );
         });
       }
 
