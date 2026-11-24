@@ -81,6 +81,19 @@
 
     button:active { background: #62518d; }
 
+    .history-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .history-buttons button {
+      margin-bottom: 0;
+      background: #493b70;
+      border-color: #7964a8;
+      font-size: 12px;
+    }
+
     .object-item.selected {
       background: #6854a0;
       border-color: #c9b5ff;
@@ -181,6 +194,7 @@
       .property-group { padding: 5px 0; }
       .logo { font-size: 12px; }
       button { font-size: 10px; padding: 8px 3px; }
+      .history-buttons button { font-size: 10px; }
     }
   </style>
 </head>
@@ -197,6 +211,12 @@
     <button id="addCube">＋ キューブ</button>
     <button id="addSphere">＋ 球体</button>
     <button id="addCylinder">＋ 円柱</button>
+
+    <h3>操作履歴</h3>
+    <div class="history-buttons">
+      <button id="undoButton">↶ Undo</button>
+      <button id="redoButton">↷ Redo</button>
+    </div>
 
     <h3>編集ツール</h3>
     <button id="moveTool">移動</button>
