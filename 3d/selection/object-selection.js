@@ -7,7 +7,8 @@ export function createObjectSelection({
   objectManager,
   transform,
   objectLock,
-  onSelect
+  onSelect,
+  multiSelectionController
 }) {
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -19,28 +20,42 @@ export function createObjectSelection({
 
     if (!rect.width || !rect.height) return;
 
-    pointer.x =
-      ((event.clientX - rect.left) / rect.width) * 2 - 1;
-
-    pointer.y =
-      -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
 
     const managedObjects = objectManager.getAll();
-
-    const hits = raycaster.intersectObjects(
-      managedObjects,
-      true
-    );
+    const hits = raycaster.intersectObjects(managedObjects, true);
 
     const selectedHit = hits.find(hit =>
       managedObjects.includes(hit.object) &&
       !objectLock?.isLocked(hit.object)
     );
 
-    if (selectedHit) {
-      onSelect(selectedHit.object);
+    const object = selectedHit?.object ?? null;
+
+    if (multiSelectionController) {
+      const additive =
+        event.shiftKey ||
+        event.ctrlKey ||
+        event.metaKey;
+
+      if (additive) {
+        if (object) {
+          multiSelectionController.toggle(object);
+        }
+      } else {
+        multiSelectionController.select(object, false);
+      }
+
+      const selected = multiSelectionController.getSelected();
+      onSelect(selected.length ? selected[0] : null);
+      return;
+    }
+
+    if (object) {
+      onSelect(object);
     } else {
       onSelect(null);
     }
