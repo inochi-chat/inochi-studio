@@ -1,0 +1,148 @@
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #f8f5ff;
+  background:
+    radial-gradient(ellipse at 15% 15%, #42316b 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 80%, #34245d 0%, transparent 45%),
+    #17152b;
+  font-family: Arial, "Noto Sans JP", sans-serif;
+}
+
+.header {
+  padding: 25px 7%;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.header-subtitle {
+  margin-top: 5px;
+  color: #aaa2c7;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.main {
+  width: min(1000px, 90%);
+  margin: 0 auto;
+  padding: 75px 0 30px;
+}
+
+.hero {
+  margin-bottom: 65px;
+}
+
+.eyebrow {
+  color: #c3a5ff;
+  font-size: 12px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.hero h1 {
+  font-size: clamp(32px, 6vw, 55px);
+  line-height: 1.5;
+  margin: 20px 0;
+}
+
+.hero-description {
+  color: #bcb5d1;
+  line-height: 2;
+  font-size: 14px;
+}
+
+.editor-section h2 {
+  font-size: 19px;
+  margin-bottom: 22px;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.editor-card {
+  display: block;
+  min-height: 290px;
+  padding: 30px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 22px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(15px);
+  transition: transform 0.2s, border-color 0.2s,
+    background 0.2s;
+}
+
+.editor-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255,255,255,0.11);
+  border-color: #b69aff;
+}
+
+.card-icon {
+  font-size: 42px;
+  margin-bottom: 20px;
+  color: #d2b8ff;
+}
+
+.card-label {
+  color: #c3a5ff;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: bold;
+}
+
+.editor-card h3 {
+  font-size: 24px;
+  margin: 12px 0;
+}
+
+.editor-card p {
+  color: #bcb5d1;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.open-link {
+  display: inline-block;
+  margin-top: 20px;
+  color: #d5c2ff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.footer {
+  margin-top: 80px;
+  padding: 25px 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  color: #827b9c;
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (max-width: 650px) {
+  .main {
+    padding-top: 50px;
+  }
+
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-card {
+    min-height: 250px;
+  }
+}
