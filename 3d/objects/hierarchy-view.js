@@ -1,6 +1,15 @@
 
-export function createHierarchyView(container, scene, hierarchy, onSelect) {
+import { createHierarchyDrag } from "./hierarchy-drag.js";
+
+export function createHierarchyView(
+  container,
+  scene,
+  hierarchy,
+  onSelect,
+  onSetParent
+) {
   const collapsedObjects = new Set();
+  const hierarchyDrag = createHierarchyDrag(onSetParent);
 
   function render(objects, selectedObject) {
     container.innerHTML = "";
@@ -42,7 +51,6 @@ export function createHierarchyView(container, scene, hierarchy, onSelect) {
       button.className = "object-item";
       button.textContent = object.name || "名称なし";
       button.title = object.name || "名称なし";
-
       button.style.paddingLeft = `${8 + depth * 16}px`;
 
       if (object === selectedObject) {
@@ -52,6 +60,8 @@ export function createHierarchyView(container, scene, hierarchy, onSelect) {
       button.addEventListener("click", () => {
         onSelect(object);
       });
+
+      hierarchyDrag.makeDraggable(button, object);
 
       row.append(toggle, button);
       wrapper.appendChild(row);
