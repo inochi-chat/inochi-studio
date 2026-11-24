@@ -7,14 +7,16 @@ export function createHierarchyView(
   hierarchy,
   onSelect,
   onSetParent,
-  onRemoveParent
+  onRemoveParent,
+  onMove
 ) {
   const collapsedObjects = new Set();
 
   const hierarchyDrag = createHierarchyDrag(
     container,
     onSetParent,
-    onRemoveParent
+    onRemoveParent,
+    onMove
   );
 
   function render(objects, selectedObject) {
