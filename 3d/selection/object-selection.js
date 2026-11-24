@@ -6,6 +6,7 @@ export function createObjectSelection({
   renderer,
   objectManager,
   transform,
+  objectLock,
   onSelect
 }) {
   const raycaster = new THREE.Raycaster();
@@ -26,16 +27,16 @@ export function createObjectSelection({
 
     raycaster.setFromCamera(pointer, camera);
 
-    // 親だけでなく、その子オブジェクトも調べる
+    const managedObjects = objectManager.getAll();
+
     const hits = raycaster.intersectObjects(
-      objectManager.getAll(),
+      managedObjects,
       true
     );
 
-    const managedObjects = objectManager.getAll();
-
     const selectedHit = hits.find(hit =>
-      managedObjects.includes(hit.object)
+      managedObjects.includes(hit.object) &&
+      !objectLock?.isLocked(hit.object)
     );
 
     if (selectedHit) {
