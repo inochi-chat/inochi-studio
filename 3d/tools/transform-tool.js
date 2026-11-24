@@ -1,7 +1,13 @@
 
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 
-export function createTransformTool(camera, renderer, scene, orbit) {
+export function createTransformTool(
+  camera,
+  renderer,
+  scene,
+  orbit,
+  objectLock
+) {
   const transform = new TransformControls(
     camera,
     renderer.domElement
@@ -9,12 +15,22 @@ export function createTransformTool(camera, renderer, scene, orbit) {
 
   scene.add(transform.getHelper());
 
-  transform.addEventListener("dragging-changed", (event) => {
+  transform.addEventListener("dragging-changed", event => {
     orbit.enabled = !event.value;
   });
 
   return {
     attach(object) {
+      if (!object) {
+        transform.detach();
+        return;
+      }
+
+      if (objectLock?.isLocked(object)) {
+        transform.detach();
+        return;
+      }
+
       transform.attach(object);
     },
 
