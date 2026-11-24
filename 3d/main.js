@@ -11,6 +11,7 @@ import { createObjectList } from "./objects/object-list.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
+import { createRotationEditor } from "./properties/rotation.js";
 
 // ----------------------------------------
 // 1. エディター初期化
@@ -129,7 +130,7 @@ function selectObject(object) {
 }
 
 // ----------------------------------------
-// 7. 数値入力欄
+// 7. 数値入力欄（サイズ用）
 // ----------------------------------------
 
 function makeNumberInput(label, value, onChange) {
@@ -159,33 +160,24 @@ function makeNumberInput(label, value, onChange) {
 }
 
 // ----------------------------------------
-// 8. 回転・サイズ編集
+// 8. サイズ編集
 // ----------------------------------------
 
-function makeGroup(title, vector, onChange, isRotation = false) {
+function makeScaleEditor(object) {
   const group = document.createElement("div");
   group.className = "property-group";
 
   const heading = document.createElement("h3");
-  heading.textContent = title;
+  heading.textContent = "サイズ";
 
   group.appendChild(heading);
 
   ["X", "Y", "Z"].forEach((axis, index) => {
     const key = axis.toLowerCase();
-    const value = vector[key];
-
-    const displayValue = isRotation
-      ? THREE.MathUtils.radToDeg(value)
-      : value;
 
     group.appendChild(
-      makeNumberInput(axis, displayValue, (number) => {
-        const converted = isRotation
-          ? THREE.MathUtils.degToRad(number)
-          : number;
-
-        onChange(index, converted);
+      makeNumberInput(axis, object.scale[key], (value) => {
+        object.scale.setComponent(index, value);
         refreshProperties();
       })
     );
@@ -232,22 +224,13 @@ function refreshProperties() {
 
   // 回転
   inner.appendChild(
-    makeGroup(
-      "回転（度）",
-      object.rotation,
-      (index, value) => {
-        object.rotation.setComponent(index, value);
-      },
-      true
-    )
+    createRotationEditor(object, () => {
+      updateObjectList();
+    })
   );
 
   // サイズ
-  inner.appendChild(
-    makeGroup("サイズ", object.scale, (index, value) => {
-      object.scale.setComponent(index, value);
-    })
-  );
+  inner.appendChild(makeScaleEditor(object));
 
   // カラー
   const colorGroup = document.createElement("div");
