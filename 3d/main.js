@@ -228,6 +228,7 @@ createObjectSelection({
   onSelect: selectObject
 });
 
+
 // ----------------------------------------
 // 13. ボタン接続
 // ----------------------------------------
@@ -258,6 +259,14 @@ document.querySelector("#scaleTool")
 
 document.querySelector("#deleteObject")
   ?.addEventListener("click", deleteSelectedObject);
+
+// Undoボタン
+document.querySelector("#undoButton")
+  ?.addEventListener("click", undo);
+
+// Redoボタン
+document.querySelector("#redoButton")
+  ?.addEventListener("click", redo);
 
 // ----------------------------------------
 // 14. キーボードショートカット
