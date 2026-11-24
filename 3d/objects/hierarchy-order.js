@@ -25,11 +25,10 @@ export function createHierarchyOrder(objectManager, scene) {
   }
 
   function canMove(object, target) {
-    if (!object || !target || object === target) {
-      return false;
-    }
-
-    return getParent(object) === getParent(target);
+    return !!object &&
+      !!target &&
+      object !== target &&
+      getParent(object) === getParent(target);
   }
 
   function moveToIndex(object, newIndex) {
@@ -39,7 +38,7 @@ export function createHierarchyOrder(objectManager, scene) {
     const siblings = getSiblings(object);
     const oldIndex = siblings.indexOf(object);
 
-    if (oldIndex === -1) return false;
+    if (oldIndex < 0 || siblings.length < 2) return false;
 
     const safeIndex = Math.max(
       0,
@@ -49,39 +48,50 @@ export function createHierarchyOrder(objectManager, scene) {
     if (oldIndex === safeIndex) return false;
 
     if (parent === scene) {
-      const allObjects = objectManager.getAll();
-      const currentIndex = allObjects.indexOf(object);
-
-      if (currentIndex === -1) return false;
-
-      const remainingRoots = siblings.filter(
+      const remaining = siblings.filter(
         item => item !== object
       );
 
-      const target = remainingRoots[safeIndex];
+      let globalIndex;
 
-      if (target) {
-        const targetIndex = allObjects.indexOf(target);
-        const insertIndex = safeIndex > oldIndex
-          ? targetIndex + 1
-          : targetIndex;
-
-        return objectManager.move(
-          object,
-          insertIndex > currentIndex
-            ? insertIndex - 1
-            : insertIndex
+      if (safeIndex < remaining.length) {
+        globalIndex = objectManager.getAll().indexOf(
+          remaining[safeIndex]
         );
+      } else {
+        const previous = remaining[safeIndex - 1];
+        globalIndex =
+          objectManager.getAll().indexOf(previous) + 1;
       }
 
-      return objectManager.move(
-        object,
-        allObjects.length - 1
-      );
+      return objectManager.move(object, globalIndex);
     }
 
-    parent.children.splice(oldIndex, 1);
-    parent.children.splice(safeIndex, 0, object);
+    const oldChildIndex = parent.children.indexOf(object);
+    if (oldChildIndex < 0) return false;
+
+    const remaining = parent.children.filter(
+      child => child !== object
+    );
+
+    const target = siblings.filter(
+      child => child !== object
+    )[safeIndex];
+
+    let insertIndex;
+
+    if (target) {
+      insertIndex = remaining.indexOf(target);
+    } else {
+      const previous = siblings.filter(
+        child => child !== object
+      )[safeIndex - 1];
+
+      insertIndex = remaining.indexOf(previous) + 1;
+    }
+
+    parent.children.splice(oldChildIndex, 1);
+    parent.children.splice(insertIndex, 0, object);
 
     return true;
   }
@@ -91,18 +101,18 @@ export function createHierarchyOrder(objectManager, scene) {
 
     const siblings = getSiblings(object);
     const targetIndex = siblings.indexOf(target);
+    const oldIndex = getIndex(object);
 
-    if (targetIndex === -1) return false;
+    if (targetIndex < 0) return false;
 
-    const newIndex = targetIndex +
+    let newIndex = targetIndex +
       (position === "after" ? 1 : 0);
 
-    const adjustedIndex =
-      getIndex(object) < newIndex
-        ? newIndex - 1
-        : newIndex;
+    if (oldIndex < newIndex) {
+      newIndex--;
+    }
 
-    return moveToIndex(object, adjustedIndex);
+    return moveToIndex(object, newIndex);
   }
 
   return {
