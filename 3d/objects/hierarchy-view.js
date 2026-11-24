@@ -1,5 +1,7 @@
 
 export function createHierarchyView(container, scene, hierarchy, onSelect) {
+  const collapsedObjects = new Set();
+
   function render(objects, selectedObject) {
     container.innerHTML = "";
 
@@ -13,14 +15,35 @@ export function createHierarchyView(container, scene, hierarchy, onSelect) {
       wrapper.className = "hierarchy-item";
 
       const children = hierarchy.getChildren(object);
+      const hasChildren = children.length > 0;
+
+      const row = document.createElement("div");
+      row.className = "hierarchy-row";
+
+      const toggle = document.createElement("button");
+      toggle.className = "hierarchy-toggle";
+      toggle.textContent = hasChildren
+        ? (collapsedObjects.has(object) ? "▶" : "▼")
+        : " ";
+
+      toggle.disabled = !hasChildren;
+
+      toggle.addEventListener("click", () => {
+        if (collapsedObjects.has(object)) {
+          collapsedObjects.delete(object);
+        } else {
+          collapsedObjects.add(object);
+        }
+
+        render(objects, selectedObject);
+      });
 
       const button = document.createElement("button");
       button.className = "object-item";
-
       button.textContent =
-        (children.length > 0 ? "📂 " : "📦 ") + object.name;
+        (hasChildren ? "📂 " : "📦 ") + object.name;
 
-      button.style.paddingLeft = `${12 + depth * 18}px`;
+      button.style.paddingLeft = `${8 + depth * 18}px`;
 
       if (object === selectedObject) {
         button.classList.add("selected");
@@ -30,11 +53,14 @@ export function createHierarchyView(container, scene, hierarchy, onSelect) {
         onSelect(object);
       });
 
-      wrapper.appendChild(button);
+      row.append(toggle, button);
+      wrapper.appendChild(row);
 
-      children.forEach(child => {
-        wrapper.appendChild(createItem(child, depth + 1));
-      });
+      if (hasChildren && !collapsedObjects.has(object)) {
+        children.forEach(child => {
+          wrapper.appendChild(createItem(child, depth + 1));
+        });
+      }
 
       return wrapper;
     }
