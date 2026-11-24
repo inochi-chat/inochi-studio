@@ -6,6 +6,8 @@ import { initializeEditor } from "./core/editor-init.js";
 import { createGeometry } from "./objects/object-factory.js";
 import { createObjectManager } from "./objects/object-manager.js";
 import { createObjectList } from "./objects/object-list.js";
+import { createHierarchyUI } from "./objects/hierarchy-ui.js";
+import { createObjectHierarchy } from "./objects/object-hierarchy.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -24,29 +26,45 @@ import {
   createDuplicateObjectCommand
 } from "./history/object-commands.js";
 
+import {
+  createSetParentCommand,
+  createRemoveParentCommand
+} from "./history/hierarchy-commands.js";
+
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
-// 1. 初期化
+// 1. HTML要素の取得
 const canvas = document.querySelector("#threeCanvas");
 const propertyPanel = document.querySelector("#propertyPanel");
 const objectListContainer = document.querySelector("#objectList");
+const hierarchyListContainer = document.querySelector("#hierarchyList");
+const hierarchyControlsContainer = document.querySelector("#hierarchyControls");
 
-if (!canvas || !propertyPanel || !objectListContainer) {
+if (
+  !canvas ||
+  !propertyPanel ||
+  !objectListContainer ||
+  !hierarchyListContainer ||
+  !hierarchyControlsContainer
+) {
   throw new Error("3DエディターのHTML要素が見つかりません");
 }
 
+// 2. エディター初期化
 const { scene, camera, renderer } = initializeEditor(canvas);
 
-// 2. 管理システム
+// 3. 管理システム
 const objectManager = createObjectManager(scene);
+const hierarchy = createObjectHierarchy(scene, objectManager);
 const history = createHistoryManager(100);
 
 function getSelectedObject() {
   return objectManager.getSelected();
 }
 
-// 3. オブジェクト一覧
+// 4. UI更新
 let objectListView;
+let hierarchyUI;
 
 function updateObjectList() {
   objectListView.render(
@@ -55,12 +73,24 @@ function updateObjectList() {
   );
 }
 
-// 4. カメラ操作
+function updateHierarchy() {
+  hierarchyUI.update(
+    objectManager.getAll(),
+    getSelectedObject()
+  );
+}
+
+function refreshEditorUI() {
+  updateObjectList();
+  updateHierarchy();
+}
+
+// 5. カメラ操作
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 
-// 5. 変形ツール
+// 6. 変形ツール
 const transform = createTransformTool(
   camera,
   renderer,
@@ -72,7 +102,7 @@ transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
 
-// 6. プロパティ表示
+// 7. プロパティ表示
 function refreshProperties() {
   propertyPanel.innerHTML = "";
 
@@ -92,11 +122,11 @@ function refreshProperties() {
   inner.className = "properties-inner";
 
   inner.appendChild(
-    createNameEditor(object, updateObjectList)
+    createNameEditor(object, refreshEditorUI)
   );
 
   inner.appendChild(
-    createPositionEditor(object, updateObjectList)
+    createPositionEditor(object, refreshEditorUI)
   );
 
   inner.appendChild(
@@ -114,7 +144,7 @@ function refreshProperties() {
   propertyPanel.appendChild(inner);
 }
 
-// 7. 選択処理
+// 8. オブジェクト選択
 function selectObject(object) {
   objectManager.select(object);
 
@@ -126,22 +156,33 @@ function selectObject(object) {
     transform.detach();
   }
 
-  updateObjectList();
+  refreshEditorUI();
   refreshProperties();
 }
 
-// 8. オブジェクト一覧の接続
+// 9. オブジェクト一覧
 objectListView = createObjectList(
   objectListContainer,
   selectObject
 );
 
-// 9. 履歴変更時の処理
+// 10. 階層UI
+hierarchyUI = createHierarchyUI({
+  listContainer: hierarchyListContainer,
+  controlsContainer: hierarchyControlsContainer,
+  scene,
+  hierarchy,
+  onSelect: selectObject,
+  onSetParent: setObjectParent,
+  onRemoveParent: removeObjectParent
+});
+
+// 11. 履歴変更時
 function onHistoryChange(object) {
   selectObject(object);
 }
 
-// 10. オブジェクト追加
+// 12. オブジェクト追加
 function addObject(type) {
   const geometry = createGeometry(type);
 
@@ -169,11 +210,17 @@ function addCylinder() {
   addObject("cylinder");
 }
 
-// 11. オブジェクト削除
+// 13. オブジェクト削除
 function deleteSelectedObject() {
   const object = getSelectedObject();
 
   if (!object) return;
+
+  // 子を持つ親の削除は現在の段階では防止
+  if (hierarchy.hasChildren(object)) {
+    alert("子オブジェクトがあるため、先に親子関係を解除してください。");
+    return;
+  }
 
   const command = createDeleteObjectCommand(
     objectManager,
@@ -184,8 +231,16 @@ function deleteSelectedObject() {
   history.execute(command);
 }
 
-// 12. オブジェクト複製
+// 14. オブジェクト複製
 function duplicateSelectedObject(object) {
+  if (!object) return;
+
+  // 子を持つ親の複製は現在の段階では防止
+  if (hierarchy.hasChildren(object)) {
+    alert("子オブジェクトがあるため、現在は複製できません。");
+    return;
+  }
+
   const command = createDuplicateObjectCommand(
     objectManager,
     object,
@@ -195,14 +250,51 @@ function duplicateSelectedObject(object) {
   history.execute(command);
 }
 
-// 複製ボタン接続
 createDuplicateButton({
   button: document.querySelector("#duplicateObject"),
   getSelectedObject,
   onDuplicate: duplicateSelectedObject
 });
 
-// 13. Undo・Redo
+// 15. 親子関係の設定
+function setObjectParent(child, parent) {
+  if (!hierarchy.canSetParent(child, parent)) {
+    alert("この親子関係は設定できません。循環する関係になっていないか確認してください。");
+    return;
+  }
+
+  const command = createSetParentCommand(
+    hierarchy,
+    child,
+    parent,
+    () => {
+      refreshEditorUI();
+      refreshProperties();
+    }
+  );
+
+  if (command) {
+    history.execute(command);
+  }
+}
+
+// 16. 親子関係の解除
+function removeObjectParent(child) {
+  const command = createRemoveParentCommand(
+    hierarchy,
+    child,
+    () => {
+      refreshEditorUI();
+      refreshProperties();
+    }
+  );
+
+  if (command) {
+    history.execute(command);
+  }
+}
+
+// 17. Undo・Redo
 function undo() {
   history.undo();
 }
@@ -211,7 +303,7 @@ function redo() {
   history.redo();
 }
 
-// 14. オブジェクト選択
+// 18. 3D画面からの選択
 createObjectSelection({
   camera,
   renderer,
@@ -220,7 +312,7 @@ createObjectSelection({
   onSelect: selectObject
 });
 
-// 15. ボタン接続
+// 19. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -254,7 +346,7 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// 16. キーボードショートカット
+// 20. キーボードショートカット
 document.addEventListener("keydown", (event) => {
   const target = event.target;
 
@@ -284,17 +376,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// 17. 描画ループ
-function animate() {
-  requestAnimationFrame(animate);
-
-  orbit.update();
-  renderer.render(scene, camera);
-}
-
-animate();
-
-// 18. 初期キューブ
+// 21. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
 
 const initialCube = objectManager.add(
@@ -305,5 +387,15 @@ const initialCube = objectManager.add(
 if (initialCube) {
   selectObject(initialCube);
 }
+
+// 22. 描画ループ
+function animate() {
+  requestAnimationFrame(animate);
+
+  orbit.update();
+  renderer.render(scene, camera);
+}
+
+animate();
 
 console.log("Inochi Studio 3D Editor Ready");
