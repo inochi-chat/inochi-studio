@@ -16,12 +16,7 @@ export function createGroupCommand(
     },
 
     redo() {
-      if (!group) {
-        group = objectGroup.createGroup(selectedObjects);
-      } else {
-        // グループ解除後に再度グループ化
-        group = objectGroup.createGroup(selectedObjects);
-      }
+      group = objectGroup.createGroup(selectedObjects);
 
       if (onChange) onChange(group);
     }
@@ -30,29 +25,23 @@ export function createGroupCommand(
 
 export function createUngroupCommand(
   objectGroup,
-  group,
+  targetGroup,
   onChange
 ) {
-  const objects = objectGroup.getGroupObjects(group);
+  const objects = objectGroup.getGroupObjects(targetGroup);
+  let group = targetGroup;
 
   return {
     undo() {
-      const restoredGroup = objectGroup.createGroup(objects);
+      group = objectGroup.createGroup(objects);
 
-      if (onChange) onChange(restoredGroup);
+      if (onChange) onChange(group);
     },
 
     redo() {
-      const currentGroups = objectGroup.getAllGroups();
-      const target = currentGroups.find(item =>
-        objectGroup.getGroupObjects(item).every(object =>
-          objects.includes(object)
-        )
-      );
+      if (!group) return;
 
-      if (target) {
-        objectGroup.ungroup(target);
-      }
+      objectGroup.ungroup(group);
 
       if (onChange) onChange(null);
     }
