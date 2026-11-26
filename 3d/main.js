@@ -133,7 +133,7 @@ transform.addEventListener("mouseUp", () => {
 });
 
 // 8. メイン選択の更新
-function selectPrimaryObject(object) {
+function selectPrimaryObject(object, selectedObjects = null) {
   if (object && objectLock.isLocked(object)) {
     object = null;
   }
@@ -142,7 +142,9 @@ function selectPrimaryObject(object) {
 
   const selectedObject = getSelectedObject();
 
-  if (selectedObject) {
+  if (selectedObjects && selectedObjects.length > 1) {
+    transform.attachMultiple(selectedObjects);
+  } else if (selectedObject) {
     transform.attach(selectedObject);
   } else {
     transform.detach();
@@ -152,6 +154,7 @@ function selectPrimaryObject(object) {
   refreshProperties();
 }
 
+
 // 9. 複数選択の管理
 const multiSelectionController = createMultiSelectionController({
   multiSelection,
@@ -159,9 +162,12 @@ const multiSelectionController = createMultiSelectionController({
   objectManager,
   objectLock,
   onChange(selectedObjects) {
-    selectPrimaryObject(selectedObjects[0] ?? null);
+    selectPrimaryObject(
+      selectedObjects[0] ?? null,
+      selectedObjects
+    );
   }
-});
+
 
 // 10. 通常の単体選択
 function selectObject(object) {
