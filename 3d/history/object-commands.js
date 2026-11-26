@@ -125,4 +125,60 @@ export function createDuplicateObjectCommand(
   };
 }
 
+
+// 複数オブジェクト複製コマンド
+export function createDuplicateObjectsCommand(
+  objectManager,
+  sourceObjects,
+  onChange
+) {
+  let duplicates = [];
+
+  function createDuplicates() {
+    duplicates = sourceObjects.map(source => {
+      const duplicate = source.clone(true);
+
+      duplicate.geometry = source.geometry.clone();
+
+      if (Array.isArray(source.material)) {
+        duplicate.material = source.material.map(
+          material => material.clone()
+        );
+      } else {
+        duplicate.material = source.material.clone();
+      }
+
+      duplicate.name = `${source.name}_copy`;
+      duplicate.position.x += 1;
+
+      return duplicate;
+    });
+  }
+
+  return {
+    undo() {
+      for (const duplicate of duplicates) {
+        objectManager.detach(duplicate);
+      }
+
+      if (onChange) onChange(null);
+    },
+
+    redo() {
+      if (duplicates.length === 0) {
+        createDuplicates();
+      }
+
+      for (const duplicate of duplicates) {
+        objectManager.restore(duplicate);
+      }
+
+      if (onChange) {
+        onChange(duplicates[0] ?? null);
+      }
+    }
+  };
+}
+
+
 export const deleteObjectsTest = true;
