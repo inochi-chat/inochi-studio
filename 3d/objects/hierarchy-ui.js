@@ -14,7 +14,9 @@ export function createHierarchyUI({
   visibility,
   onVisibilityChange,
   objectLock,
-  onLockChange
+  onLockChange,
+  objectGroup,
+  onSelectGroup
 }) {
   const hierarchyView = createHierarchyView(
     listContainer,
@@ -27,7 +29,9 @@ export function createHierarchyUI({
     visibility,
     onVisibilityChange,
     objectLock,
-    onLockChange
+    onLockChange,
+    objectGroup,
+    onSelectGroup
   );
 
   const hierarchyControls = createHierarchyControls(
