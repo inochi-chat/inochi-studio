@@ -47,3 +47,26 @@ export function createUngroupCommand(
     }
   };
 }
+
+export function createRenameGroupCommand(
+  group,
+  newName,
+  onChange
+) {
+  const oldName = group.name;
+
+  return {
+    undo() {
+      group.name = oldName;
+
+      if (onChange) onChange(group);
+    },
+
+    redo() {
+      group.name = newName;
+
+      if (onChange) onChange(group);
+    }
+  };
+}
+
