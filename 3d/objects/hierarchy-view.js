@@ -171,7 +171,6 @@ export function createHierarchyView(
         }
       });
 
-      
 button.addEventListener("dblclick", event => {
   event.preventDefault();
   event.stopPropagation();
@@ -191,9 +190,9 @@ button.addEventListener("dblclick", event => {
     return;
   }
 
-  group.name = trimmedName;
-
-  render(objects, selectedObject);
+  if (onRenameGroup) {
+    onRenameGroup(group, trimmedName);
+  }
 });
 
 
