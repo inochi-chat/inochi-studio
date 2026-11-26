@@ -1,163 +1,137 @@
 
-import * as THREE from "three";
-
-export function createObjectManager(scene) {
-  const objects = [];
-
-  let selectedObject = null;
-  let objectCounter = 0;
-
-  const detachedInfo = new Map();
-
-  function add(geometry, type) {
-    if (!geometry) return null;
-
-    objectCounter++;
-
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x9b83ff,
-      roughness: 0.55,
-      metalness: 0.05
-    });
-
-    const object = new THREE.Mesh(geometry, material);
-
-    object.name = `${type}_${objectCounter}`;
-    object.position.y = 0.5;
-    object.castShadow = true;
-    object.receiveShadow = true;
-
-    scene.add(object);
-    objects.push(object);
-
-    return object;
-  }
-
-  function detach(object) {
-    if (!object) return;
-
-    const index = objects.indexOf(object);
-    if (index === -1) return;
-
-    detachedInfo.set(object, {
-      parent: object.parent || scene,
-      index
-    });
-
-    if (object.parent) {
-      object.parent.remove(object);
-    }
-
-    objects.splice(index, 1);
-
-    if (selectedObject === object) {
-      selectedObject = null;
-    }
-  }
-
-  function restore(object, index) {
-    if (!object || objects.includes(object)) return;
-
-    const info = detachedInfo.get(object);
-
-    const safeIndex = Math.max(
-      0,
-      Math.min(
-        index ?? info?.index ?? objects.length,
-        objects.length
-      )
-    );
-
-    objects.splice(safeIndex, 0, object);
-
-    let parent = info?.parent || scene;
-
-    if (parent !== scene && !scene.getObjectById(parent.id)) {
-      parent = scene;
-    }
-
-    parent.add(object);
-    detachedInfo.delete(object);
-  }
-
-  function dispose(object) {
-    if (!object) return;
-
-    if (objects.includes(object)) {
-      detach(object);
-    } else if (object.parent) {
-      object.parent.remove(object);
-    }
-
-    if (object.geometry) {
-      object.geometry.dispose();
-    }
-
-    if (Array.isArray(object.material)) {
-      object.material.forEach(material => material.dispose());
-    } else if (object.material) {
-      object.material.dispose();
-    }
-
-    if (selectedObject === object) {
-      selectedObject = null;
-    }
-  }
-
-  function remove(object) {
-    dispose(object);
-  }
-
-  function select(object) {
-    if (object && !objects.includes(object)) return;
-    selectedObject = object || null;
-  }
-
-  function move(object, targetIndex) {
-    const fromIndex = objects.indexOf(object);
-
-    if (fromIndex === -1) return false;
-
-    const safeIndex = Math.max(
-      0,
-      Math.min(targetIndex, objects.length - 1)
-    );
-
-    if (fromIndex === safeIndex) return false;
-
-    objects.splice(fromIndex, 1);
-    objects.splice(safeIndex, 0, object);
-
-    return true;
-  }
+export function createAddObjectCommand(
+  objectManager,
+  geometry,
+  type,
+  onChange
+) {
+  let object = null;
 
   return {
-    add,
-    remove,
-    detach,
-    restore,
-    dispose,
-    select,
-    move,
+    undo() {
+      if (!object) return;
 
-    getAll() {
-      return [...objects];
+      objectManager.detach(object);
+
+      if (onChange) onChange(null);
     },
 
-    getSelected() {
-      return selectedObject;
+    redo() {
+      if (!object) {
+        object = objectManager.add(geometry, type);
+      } else {
+        objectManager.restore(object);
+      }
+
+      if (onChange) onChange(object);
+    }
+  };
+}
+
+export function createDeleteObjectCommand(
+  objectManager,
+  object,
+  onChange
+) {
+  const index = objectManager.getIndex(object);
+
+  return {
+    undo() {
+      objectManager.restore(object, index);
+
+      if (onChange) onChange(object);
     },
 
-    setSelected(object) {
-      select(object);
+    redo() {
+      objectManager.detach(object);
+
+      if (onChange) onChange(null);
+    }
+  };
+}
+
+// 複数オブジェクト削除コマンド
+export function createDeleteObjectsCommand(
+  objectManager,
+  selectedObjects,
+  onChange
+) {
+  const targets = selectedObjects
+    .map(object => ({
+      object,
+      index: objectManager.getIndex(object)
+    }))
+    .filter(item => item.index !== -1);
+
+  return {
+    undo() {
+      // 元の順番に戻すため、小さいindexから復元
+      const sorted = [...targets].sort(
+        (a, b) => a.index - b.index
+      );
+
+      for (const item of sorted) {
+        objectManager.restore(item.object, item.index);
+      }
+
+      if (onChange) {
+        onChange(sorted[0]?.object ?? null);
+      }
     },
 
-    getCount() {
-      return objects.length;
+    redo() {
+      // indexのずれを防ぐため、大きいindexから削除
+      const sorted = [...targets].sort(
+        (a, b) => b.index - a.index
+      );
+
+      for (const item of sorted) {
+        objectManager.detach(item.object);
+      }
+
+      if (onChange) onChange(null);
+    }
+  };
+}
+
+// オブジェクト複製コマンド
+export function createDuplicateObjectCommand(
+  objectManager,
+  source,
+  onChange
+) {
+  let duplicate = null;
+
+  return {
+    undo() {
+      if (!duplicate) return;
+
+      objectManager.detach(duplicate);
+
+      if (onChange) onChange(null);
     },
 
-    getIndex(object) {
-      return objects.indexOf(object);
+    redo() {
+      if (!duplicate) {
+        duplicate = source.clone(true);
+
+        duplicate.geometry = source.geometry.clone();
+
+        if (Array.isArray(source.material)) {
+          duplicate.material = source.material.map(
+            material => material.clone()
+          );
+        } else {
+          duplicate.material = source.material.clone();
+        }
+
+        duplicate.name = `${source.name}_copy`;
+        duplicate.position.x += 1;
+      }
+
+      objectManager.restore(duplicate);
+
+      if (onChange) onChange(duplicate);
     }
   };
 }
