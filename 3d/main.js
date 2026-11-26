@@ -84,6 +84,11 @@ const { scene, camera, renderer } = initializeEditor(canvas);
 // 3. 管理システム
 const objectManager = createObjectManager(scene);
 const hierarchy = createObjectHierarchy(scene, objectManager);
+
+const objectGroup = createObjectGroup(scene, objectManager);
+
+let activeGroup = null;
+
 const hierarchyOrder = createHierarchyOrder(objectManager, scene);
 const visibility = createObjectVisibility();
 const objectLock = createObjectLock();
