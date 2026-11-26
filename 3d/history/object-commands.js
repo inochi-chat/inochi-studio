@@ -124,3 +124,5 @@ export function createDuplicateObjectCommand(
     }
   };
 }
+
+export const deleteObjectsTest = true;
