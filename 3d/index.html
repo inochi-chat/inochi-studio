@@ -658,6 +658,31 @@
 })();
 </script>
 
+
+<script>
+window.addEventListener("error", event => {
+  const message = document.createElement("pre");
+  message.style.cssText =
+    "position:fixed;z-index:9999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
+  message.textContent =
+    "JavaScript Error:\n" +
+    (event.message || "不明なエラー") +
+    "\n" + (event.filename || "") +
+    ":" + (event.lineno || "");
+  document.body.appendChild(message);
+});
+
+window.addEventListener("unhandledrejection", event => {
+  const message = document.createElement("pre");
+  message.style.cssText =
+    "position:fixed;z-index:9999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
+  message.textContent =
+    "Promise Error:\n" + String(event.reason);
+  document.body.appendChild(message);
+});
+</script>
+
+  
 <script type="module" src="./main.js"></script>
 
 </body>
