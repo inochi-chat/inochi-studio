@@ -31,6 +31,7 @@ import { createHistoryManager } from "./history/history-manager.js";
 import {
   createAddObjectCommand,
   createDeleteObjectCommand,
+  createDeleteObjectsCommand,
   createDuplicateObjectCommand
 } from "./history/object-commands.js";
 
@@ -258,30 +259,49 @@ function addCylinder() {
   addObject("cylinder");
 }
 
+
 // 16. オブジェクト削除
 function deleteSelectedObject() {
-  const object = getSelectedObject();
+  const selectedObjects = multiSelection.getAll();
 
-  if (!object) return;
+  const targets = selectedObjects.length > 0
+    ? selectedObjects
+    : [getSelectedObject()].filter(Boolean);
 
-  if (objectLock.isLocked(object)) {
-    alert("ロック中のオブジェクトは削除できません。");
-    return;
+  if (targets.length === 0) return;
+
+  // 全対象を事前確認
+  for (const object of targets) {
+    if (objectLock.isLocked(object)) {
+      alert("ロック中のオブジェクトが含まれているため削除できません。");
+      return;
+    }
+
+    if (hierarchy.hasChildren(object)) {
+      alert("子オブジェクトがあるものが含まれています。先に親子関係を解除してください。");
+      return;
+    }
   }
 
-  if (hierarchy.hasChildren(object)) {
-    alert("子オブジェクトがあるため、先に親子関係を解除してください。");
-    return;
-  }
+  // 同時変形グループを解除
+  transform.detach();
 
-  const command = createDeleteObjectCommand(
+  // 選択状態を解除
+  multiSelectionController.clear();
+
+  // 複数削除コマンドを実行
+  const command = createDeleteObjectsCommand(
     objectManager,
-    object,
+    targets,
     onHistoryChange
   );
 
   history.execute(command);
+
+  refreshEditorUI();
+  refreshProperties();
 }
+
 
 // 17. オブジェクト複製
 function duplicateSelectedObject(object) {
