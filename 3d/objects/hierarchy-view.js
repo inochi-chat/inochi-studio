@@ -171,6 +171,32 @@ export function createHierarchyView(
         }
       });
 
+      
+button.addEventListener("dblclick", event => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const currentName = group.name || "グループ";
+  const newName = prompt(
+    "新しいグループ名を入力してください",
+    currentName
+  );
+
+  if (newName === null) return;
+
+  const trimmedName = newName.trim();
+
+  if (!trimmedName) {
+    alert("グループ名を入力してください。");
+    return;
+  }
+
+  group.name = trimmedName;
+
+  render(objects, selectedObject);
+});
+
+
       row.append(toggle, button);
       wrapper.appendChild(row);
 
