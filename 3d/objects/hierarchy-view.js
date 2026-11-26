@@ -14,7 +14,9 @@ export function createHierarchyView(
   visibility,
   onVisibilityChange,
   objectLock,
-  onLockChange
+  onLockChange,
+  objectGroup,
+  onSelectGroup
 ) {
   const collapsedObjects = new Set();
 
@@ -27,6 +29,10 @@ export function createHierarchyView(
 
   function render(objects, selectedObject) {
     container.innerHTML = "";
+
+    const groups = objectGroup
+      ? objectGroup.getAllGroups()
+      : [];
 
     const roots = objects.filter(object =>
       hierarchy.getParent(object) === null &&
@@ -118,8 +124,63 @@ export function createHierarchyView(
       return wrapper;
     }
 
+    // 通常オブジェクト
     roots.forEach(object => {
       container.appendChild(createItem(object));
+    });
+
+    // グループ
+    groups.forEach(group => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "hierarchy-item";
+
+      const children = objectGroup.getGroupObjects(group);
+      const hasChildren = children.length > 0;
+
+      const row = document.createElement("div");
+      row.className = "hierarchy-row";
+
+      const toggle = document.createElement("button");
+      toggle.className = "hierarchy-toggle";
+
+      toggle.textContent = hasChildren
+        ? (collapsedObjects.has(group) ? "▶" : "▼")
+        : "";
+
+      toggle.disabled = !hasChildren;
+
+      toggle.addEventListener("click", () => {
+        if (collapsedObjects.has(group)) {
+          collapsedObjects.delete(group);
+        } else {
+          collapsedObjects.add(group);
+        }
+
+        render(objects, selectedObject);
+      });
+
+      const button = document.createElement("button");
+      button.className = "object-item";
+      button.textContent = `📦 ${group.name || "グループ"}`;
+      button.title = group.name || "グループ";
+      button.style.paddingLeft = "8px";
+
+      button.addEventListener("click", () => {
+        if (onSelectGroup) {
+          onSelectGroup(group);
+        }
+      });
+
+      row.append(toggle, button);
+      wrapper.appendChild(row);
+
+      if (hasChildren && !collapsedObjects.has(group)) {
+        children.forEach(child => {
+          wrapper.appendChild(createItem(child, 1));
+        });
+      }
+
+      container.appendChild(wrapper);
     });
   }
 
