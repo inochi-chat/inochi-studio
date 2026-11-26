@@ -363,6 +363,89 @@ createDuplicateButton({
 });
 
 
+// グループ化
+function groupSelectedObjects() {
+  const selectedObjects = multiSelection.getAll();
+
+  const targets = selectedObjects.length > 0
+    ? selectedObjects
+    : [getSelectedObject()].filter(Boolean);
+
+  if (targets.length < 2) {
+    alert("グループ化するオブジェクトを2個以上選択してください。");
+    return;
+  }
+
+  for (const object of targets) {
+    if (objectLock.isLocked(object)) {
+      alert("ロック中のオブジェクトが含まれているためグループ化できません。");
+      return;
+    }
+  }
+
+  transform.detach();
+  multiSelectionController.clear();
+
+  const command = createGroupCommand(
+    objectGroup,
+    targets,
+    group => {
+      activeGroup = group;
+
+      if (group) {
+        transform.attach(group);
+      } else {
+        transform.detach();
+      }
+
+      refreshEditorUI();
+      refreshProperties();
+    }
+  );
+
+  history.execute(command);
+}
+
+// グループ解除
+function ungroupSelectedObject() {
+  if (!activeGroup || !objectGroup.isGroup(activeGroup)) {
+    alert("グループを選択してください。");
+    return;
+  }
+
+  transform.detach();
+
+  const command = createUngroupCommand(
+    objectGroup,
+    activeGroup,
+    group => {
+      activeGroup = group;
+
+      if (group) {
+        transform.attach(group);
+      } else {
+        transform.detach();
+      }
+
+      refreshEditorUI();
+      refreshProperties();
+    }
+  );
+
+  history.execute(command);
+}
+
+
+// グループ化・グループ解除ボタン
+document
+  .querySelector("#groupObjects")
+  ?.addEventListener("click", groupSelectedObjects);
+
+document
+  .querySelector("#ungroupObjects")
+  ?.addEventListener("click", ungroupSelectedObject);
+
+
 // 18. 親子関係の設定
 function setObjectParent(child, parent) {
   if (!hierarchy.canSetParent(child, parent)) {
