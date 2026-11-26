@@ -303,28 +303,47 @@ function deleteSelectedObject() {
   refreshProperties();
 }
 
+ // 17. オブジェクト複製
+function duplicateSelectedObject() {
+  const selectedObjects = multiSelection.getAll();
 
-// 17. オブジェクト複製
-function duplicateSelectedObject(object) {
-  if (!object) return;
+  const targets = selectedObjects.length > 0
+    ? selectedObjects
+    : [getSelectedObject()].filter(Boolean);
 
-  if (objectLock.isLocked(object)) {
-    alert("ロック中のオブジェクトは複製できません。");
-    return;
+  if (targets.length === 0) return;
+
+  for (const object of targets) {
+    if (objectLock.isLocked(object)) {
+      alert("ロック中のオブジェクトが含まれているため複製できません。");
+      return;
+    }
+
+    if (hierarchy.hasChildren(object)) {
+      alert("子オブジェクトがあるものが含まれています。現在は複製できません。");
+      return;
+    }
   }
 
-  if (hierarchy.hasChildren(object)) {
-    alert("子オブジェクトがあるため、現在は複製できません。");
-    return;
-  }
+  const command = targets.length === 1
+    ? createDuplicateObjectCommand(
+        objectManager,
+        targets[0],
+        onHistoryChange
+      )
+    : createDuplicateObjectsCommand(
+        objectManager,
+        targets,
+        onHistoryChange
+      );
 
-  const command = createDuplicateObjectCommand(
-    objectManager,
-    object,
-    onHistoryChange
-  );
+  transform.detach();
+  multiSelectionController.clear();
 
   history.execute(command);
+
+  refreshEditorUI();
+  refreshProperties();
 }
 
 createDuplicateButton({
@@ -332,6 +351,7 @@ createDuplicateButton({
   getSelectedObject,
   onDuplicate: duplicateSelectedObject
 });
+
 
 // 18. 親子関係の設定
 function setObjectParent(child, parent) {
