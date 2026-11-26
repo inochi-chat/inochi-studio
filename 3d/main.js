@@ -25,8 +25,13 @@ import { createMultiSelectionController } from "./selection/multi-selection-cont
 import { createMultiSelectionMode } from "./selection/multi-selection-mode.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
-
 import { createHistoryManager } from "./history/history-manager.js";
+import { createObjectGroup } from "./objects/object-group.js";
+
+import {
+  createGroupCommand,
+  createUngroupCommand
+} from "./history/group-commands.js";
 
 import {
   createAddObjectCommand,
