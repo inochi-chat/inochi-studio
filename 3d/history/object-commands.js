@@ -10,9 +10,7 @@ export function createAddObjectCommand(
   return {
     undo() {
       if (!object) return;
-
       objectManager.detach(object);
-
       if (onChange) onChange(null);
     },
 
@@ -22,7 +20,6 @@ export function createAddObjectCommand(
       } else {
         objectManager.restore(object);
       }
-
       if (onChange) onChange(object);
     }
   };
@@ -38,12 +35,52 @@ export function createDeleteObjectCommand(
   return {
     undo() {
       objectManager.restore(object, index);
-
       if (onChange) onChange(object);
     },
 
     redo() {
       objectManager.detach(object);
+      if (onChange) onChange(null);
+    }
+  };
+}
+
+// 複数オブジェクト削除コマンド
+export function createDeleteObjectsCommand(
+  objectManager,
+  selectedObjects,
+  onChange
+) {
+  const targets = selectedObjects
+    .map(object => ({
+      object,
+      index: objectManager.getIndex(object)
+    }))
+    .filter(item => item.index !== -1);
+
+  return {
+    undo() {
+      const sorted = [...targets].sort(
+        (a, b) => a.index - b.index
+      );
+
+      for (const item of sorted) {
+        objectManager.restore(item.object, item.index);
+      }
+
+      if (onChange) {
+        onChange(sorted[0]?.object ?? null);
+      }
+    },
+
+    redo() {
+      const sorted = [...targets].sort(
+        (a, b) => b.index - a.index
+      );
+
+      for (const item of sorted) {
+        objectManager.detach(item.object);
+      }
 
       if (onChange) onChange(null);
     }
@@ -61,16 +98,13 @@ export function createDuplicateObjectCommand(
   return {
     undo() {
       if (!duplicate) return;
-
       objectManager.detach(duplicate);
-
       if (onChange) onChange(null);
     },
 
     redo() {
       if (!duplicate) {
         duplicate = source.clone(true);
-
         duplicate.geometry = source.geometry.clone();
 
         if (Array.isArray(source.material)) {
@@ -86,7 +120,6 @@ export function createDuplicateObjectCommand(
       }
 
       objectManager.restore(duplicate);
-
       if (onChange) onChange(duplicate);
     }
   };
