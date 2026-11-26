@@ -221,6 +221,21 @@ objectListView = createObjectList(
   selectObject
 );
 
+
+function selectGroup(group) {
+  if (!group || !objectGroup.isGroup(group)) return;
+
+  multiSelectionController.clear();
+
+  activeGroup = group;
+
+  transform.attach(group);
+
+  refreshEditorUI();
+  refreshProperties();
+}
+
+
 // 13. 階層UI
 hierarchyUI = createHierarchyUI({
   listContainer: hierarchyListContainer,
@@ -234,7 +249,9 @@ hierarchyUI = createHierarchyUI({
   visibility,
   onVisibilityChange: handleVisibilityChange,
   objectLock,
-  onLockChange: handleLockChange
+  onLockChange: handleLockChange,
+  objectGroup,
+  onSelectGroup: selectGroup
 });
 
 // 14. 履歴変更時
