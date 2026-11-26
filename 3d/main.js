@@ -30,7 +30,8 @@ import { createObjectGroup } from "./objects/object-group.js";
 
 import {
   createGroupCommand,
-  createUngroupCommand
+  createUngroupCommand,
+  createRenameGroupCommand
 } from "./history/group-commands.js";
 
 import {
