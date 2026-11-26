@@ -156,6 +156,7 @@ function selectPrimaryObject(object, selectedObjects = null) {
 
 
 // 9. 複数選択の管理
+
 const multiSelectionController = createMultiSelectionController({
   multiSelection,
   visual: multiSelectionVisual,
@@ -167,7 +168,7 @@ const multiSelectionController = createMultiSelectionController({
       selectedObjects
     );
   }
-
+});
 
 // 10. 通常の単体選択
 function selectObject(object) {
