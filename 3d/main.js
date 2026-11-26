@@ -33,7 +33,7 @@ import {
   createDeleteObjectCommand,
   createDeleteObjectsCommand,
   createDuplicateObjectCommand
-} from "./history/object-commands.js";
+} from "./history/object-commands.js?v=2";
 
 import {
   createSetParentCommand,
