@@ -482,7 +482,6 @@ export function createMeshPicker({
   // 操作イベント
   // -------------------------
 
-  
 function handlePointerDown(event) {
   if (event.button !== undefined && event.button !== 0) {
     return;
@@ -516,6 +515,77 @@ function handlePointerDown(event) {
   hideSelectionBox();
 }
 
+  
+function handlePointerMove(event) {
+  if (!pointerStart) return;
+
+  if (
+    pointerStart.pointerId !== undefined &&
+    event.pointerId !== pointerStart.pointerId
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  updateSelectionBox({
+    x: event.clientX,
+    y: event.clientY
+  });
+}
+
+function handlePointerUp(event) {
+  if (!pointerStart) return;
+
+  if (
+    pointerStart.pointerId !== undefined &&
+    event.pointerId !== pointerStart.pointerId
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const start = {
+    x: pointerStart.x,
+    y: pointerStart.y
+  };
+
+  const end = {
+    x: event.clientX,
+    y: event.clientY
+  };
+
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+
+  pointerStart = null;
+  hideSelectionBox();
+
+  // 小さな移動ならクリック選択
+  if (Math.hypot(dx, dy) < 6) {
+    selectAt(end.x, end.y);
+  } else {
+    // ドラッグなら範囲選択
+    selectByRectangle(start, end);
+  }
+}
+
+function handlePointerCancel(event) {
+  if (!pointerStart) return;
+
+  if (
+    pointerStart.pointerId !== undefined &&
+    event.pointerId !== pointerStart.pointerId
+  ) {
+    return;
+  }
+
+  pointerStart = null;
+  hideSelectionBox();
+}
 
   // -------------------------
   // モード・複数選択
