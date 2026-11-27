@@ -1,79 +1,109 @@
 
-export function createAddObjectCommand(
-  objectManager,
-  geometry,
-  type,
-  onChange
-) {
-  let object = null;
+export function createGroupCommand(objectGroup, selectedObjects, onChange) {
+  let group = null;
 
   return {
     undo() {
-      if (!object) return;
-      objectManager.detach(object);
+      if (!group) return;
+
+      objectGroup.ungroup(group);
+
       if (onChange) onChange(null);
     },
 
     redo() {
-      if (!object) {
-        object = objectManager.add(geometry, type);
-      } else {
-        objectManager.restore(object);
-      }
-      if (onChange) onChange(object);
+      group = objectGroup.createGroup(selectedObjects);
+
+      if (onChange) onChange(group);
     }
   };
 }
 
-export function createDeleteObjectCommand(
-  objectManager,
-  object,
-  onChange
-) {
-  const index = objectManager.getIndex(object);
+export function createUngroupCommand(objectGroup, targetGroup, onChange) {
+  const objects = objectGroup.getGroupObjects(targetGroup);
+  let group = targetGroup;
 
   return {
     undo() {
-      objectManager.restore(object, index);
-      if (onChange) onChange(object);
+      group = objectGroup.createGroup(objects);
+
+      if (onChange) onChange(group);
     },
 
     redo() {
-      objectManager.detach(object);
+      if (!group) return;
+
+      objectGroup.ungroup(group);
+
       if (onChange) onChange(null);
     }
   };
 }
 
-// 複数オブジェクト削除コマンド
-export function createDeleteObjectsCommand(
+export function createRenameGroupCommand(group, newName, onChange) {
+  const oldName = group.name;
+
+  return {
+    undo() {
+      group.name = oldName;
+
+      if (onChange) onChange(group);
+    },
+
+    redo() {
+      group.name = newName;
+
+      if (onChange) onChange(group);
+    }
+  };
+}
+
+// グループと中のオブジェクトをまとめて削除する
+export function createDeleteGroupCommand(
+  objectGroup,
   objectManager,
-  selectedObjects,
+  targetGroup,
   onChange
 ) {
-  const targets = selectedObjects
+  const children = objectGroup.getGroupObjects(targetGroup);
+
+  const targets = children
     .map(object => ({
       object,
       index: objectManager.getIndex(object)
     }))
     .filter(item => item.index !== -1);
 
+  let deleted = false;
+
   return {
     undo() {
+      if (!deleted) return;
+
+      // 先にグループを復元
+      if (!objectGroup.restoreGroup(targetGroup)) return;
+
+      // 子オブジェクトを元の順番で復元
       const sorted = [...targets].sort(
         (a, b) => a.index - b.index
       );
 
       for (const item of sorted) {
-        objectManager.restore(item.object, item.index);
+        objectManager.restore(
+          item.object,
+          item.index
+        );
       }
 
-      if (onChange) {
-        onChange(sorted[0]?.object ?? null);
-      }
+      deleted = false;
+
+      if (onChange) onChange(targetGroup);
     },
 
     redo() {
+      if (deleted) return;
+
+      // 子オブジェクトを先に退避
       const sorted = [...targets].sort(
         (a, b) => b.index - a.index
       );
@@ -82,103 +112,26 @@ export function createDeleteObjectsCommand(
         objectManager.detach(item.object);
       }
 
-      if (onChange) onChange(null);
-    }
-  };
-}
+      // 最後にグループを削除
+      if (!objectGroup.deleteGroup(targetGroup)) {
+        // 失敗した場合は子を戻す
+        const restoreTargets = [...targets].sort(
+          (a, b) => a.index - b.index
+        );
 
-// オブジェクト複製コマンド
-export function createDuplicateObjectCommand(
-  objectManager,
-  source,
-  onChange
-) {
-  let duplicate = null;
-
-  return {
-    undo() {
-      if (!duplicate) return;
-      objectManager.detach(duplicate);
-      if (onChange) onChange(null);
-    },
-
-    redo() {
-      if (!duplicate) {
-        duplicate = source.clone(true);
-        duplicate.geometry = source.geometry.clone();
-
-        if (Array.isArray(source.material)) {
-          duplicate.material = source.material.map(
-            material => material.clone()
+        for (const item of restoreTargets) {
+          objectManager.restore(
+            item.object,
+            item.index
           );
-        } else {
-          duplicate.material = source.material.clone();
         }
 
-        duplicate.name = `${source.name}_copy`;
-        duplicate.position.x += 1;
+        return;
       }
 
-      objectManager.restore(duplicate);
-      if (onChange) onChange(duplicate);
-    }
-  };
-}
-
-
-// 複数オブジェクト複製コマンド
-export function createDuplicateObjectsCommand(
-  objectManager,
-  sourceObjects,
-  onChange
-) {
-  let duplicates = [];
-
-  function createDuplicates() {
-    duplicates = sourceObjects.map(source => {
-      const duplicate = source.clone(true);
-
-      duplicate.geometry = source.geometry.clone();
-
-      if (Array.isArray(source.material)) {
-        duplicate.material = source.material.map(
-          material => material.clone()
-        );
-      } else {
-        duplicate.material = source.material.clone();
-      }
-
-      duplicate.name = `${source.name}_copy`;
-      duplicate.position.x += 1;
-
-      return duplicate;
-    });
-  }
-
-  return {
-    undo() {
-      for (const duplicate of duplicates) {
-        objectManager.detach(duplicate);
-      }
+      deleted = true;
 
       if (onChange) onChange(null);
-    },
-
-    redo() {
-      if (duplicates.length === 0) {
-        createDuplicates();
-      }
-
-      for (const duplicate of duplicates) {
-        objectManager.restore(duplicate);
-      }
-
-      if (onChange) {
-        onChange(duplicates[0] ?? null);
-      }
     }
   };
 }
-
-
-export const deleteObjectsTest = true;
