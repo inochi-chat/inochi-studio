@@ -1,4 +1,4 @@
-import * as THREE from "three";
+
 export function createMeshHistory({
   mesh,
   maxHistory = 50,
@@ -12,95 +12,58 @@ export function createMeshHistory({
   const redoStack = [];
 
   function capture() {
-    const geometry = mesh.geometry;
-    const position = geometry.attributes.position;
-
-    return {
-      positions: Array.from(position.array),
-      index: geometry.index
-        ? Array.from(geometry.index.array)
-        : null
-    };
+    return mesh.geometry.clone();
   }
 
-  function restore(state) {
-    if (!state?.positions) return false;
-
-    const geometry = mesh.geometry;
-
-    const position = geometry.attributes.position;
-
-    if (!position || position.array.length !== state.positions.length) {
-      const replacement = new THREE.BufferGeometry();
-
-      replacement.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(
-          state.positions,
-          3
-        )
-      );
-
-      if (state.index) {
-        replacement.setIndex(state.index);
-      }
-
-      replacement.computeVertexNormals();
-      replacement.computeBoundingBox();
-      replacement.computeBoundingSphere();
-
-      mesh.geometry.dispose();
-      mesh.geometry = replacement;
-    } else {
-      for (let i = 0; i < state.positions.length; i++) {
-        position.array[i] = state.positions[i];
-      }
-
-      position.needsUpdate = true;
-
-      geometry.computeVertexNormals();
-      geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
+  function clearStack(stack) {
+    for (const geometry of stack) {
+      geometry.dispose();
     }
 
-    onRestore();
+    stack.length = 0;
+  }
+
+  function push(stack, geometry) {
+    stack.push(geometry);
+
+    while (stack.length > maxHistory) {
+      const oldest = stack.shift();
+      oldest.dispose();
+    }
+  }
+
+  function save() {
+    push(undoStack, capture());
+    clearStack(redoStack);
+  }
+
+  function restore(stack, oppositeStack) {
+    if (stack.length === 0) return false;
+
+    push(oppositeStack, capture());
+
+    const previous = mesh.geometry;
+    const snapshot = stack.pop();
+
+    mesh.geometry = snapshot;
+    previous.dispose();
+
+    onRestore(mesh.geometry);
 
     return true;
   }
 
-  function save() {
-    undoStack.push(capture());
-
-    if (undoStack.length > maxHistory) {
-      undoStack.shift();
-    }
-
-    redoStack.length = 0;
-  }
-
   function undo() {
-    if (undoStack.length === 0) return false;
-
-    redoStack.push(capture());
-
-    const previous = undoStack.pop();
-
-    return restore(previous);
+    return restore(undoStack, redoStack);
   }
 
   function redo() {
-    if (redoStack.length === 0) return false;
-
-    undoStack.push(capture());
-
-    const next = redoStack.pop();
-
-    return restore(next);
+    return restore(redoStack, undoStack);
   }
 
   function clear() {
-    undoStack.length = 0;
-    redoStack.length = 0;
+    clearStack(undoStack);
+    clearStack(redoStack);
   }
 
   function canUndo() {
@@ -111,12 +74,17 @@ export function createMeshHistory({
     return redoStack.length > 0;
   }
 
+  function dispose() {
+    clear();
+  }
+
   return {
     save,
     undo,
     redo,
     clear,
     canUndo,
-    canRedo
+    canRedo,
+    dispose
   };
 }
