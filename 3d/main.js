@@ -61,6 +61,7 @@ import {
 
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
+
 // 1. HTML要素
 const canvas = document.querySelector("#threeCanvas");
 const propertyPanel = document.querySelector("#propertyPanel");
@@ -79,13 +80,14 @@ if (
   throw new Error("3DエディターのHTML要素が見つかりません");
 }
 
+
 // 2. エディター初期化
 const { scene, camera, renderer } = initializeEditor(canvas);
+
 
 // 3. 管理システム
 const objectManager = createObjectManager(scene);
 const hierarchy = createObjectHierarchy(scene, objectManager);
-
 const objectGroup = createObjectGroup(scene, objectManager);
 
 let activeGroup = null;
@@ -94,6 +96,7 @@ const hierarchyOrder = createHierarchyOrder(objectManager, scene);
 const visibility = createObjectVisibility();
 const objectLock = createObjectLock();
 const history = createHistoryManager(100);
+
 
 // 4. 複数選択システム
 const multiSelection = createMultiSelection();
@@ -104,7 +107,33 @@ function getSelectedObject() {
   return objectManager.getSelected();
 }
 
-// 5. UI更新
+
+// 5. ロック確認
+function isObjectEffectivelyLocked(object) {
+  if (!object) return false;
+
+  let current = object;
+
+  while (current && current !== scene) {
+    if (objectLock.isLocked(current)) {
+      return true;
+    }
+
+    if (
+      objectGroup.isGroup(current) &&
+      objectGroup.isGroupLocked(current)
+    ) {
+      return true;
+    }
+
+    current = current.parent;
+  }
+
+  return false;
+}
+
+
+// 6. UI更新
 let objectListView;
 let hierarchyUI;
 
@@ -127,12 +156,14 @@ function refreshEditorUI() {
   updateHierarchy();
 }
 
-// 6. カメラ操作
+
+// 7. カメラ操作
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 
-// 7. 変形ツール
+
+// 8. 変形ツール
 const transform = createTransformTool(
   camera,
   renderer,
@@ -146,10 +177,53 @@ transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
 
-// 8. メイン選択の更新
+
+// 9. プロパティ表示
+function refreshProperties() {
+  propertyPanel.innerHTML = "";
+
+  const object = getSelectedObject();
+
+  if (!object) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent =
+      "オブジェクトを選択すると、ここで詳細を編集できるよ。";
+
+    propertyPanel.appendChild(empty);
+    return;
+  }
+
+  if (isObjectEffectivelyLocked(object)) {
+    const message = document.createElement("p");
+    message.className = "empty";
+    message.textContent =
+      "このオブジェクトはロック中のため編集できません。";
+
+    propertyPanel.appendChild(message);
+    return;
+  }
+
+  const inner = document.createElement("div");
+  inner.className = "properties-inner";
+
+  inner.appendChild(createNameEditor(object, refreshEditorUI));
+  inner.appendChild(createPositionEditor(object, refreshEditorUI));
+  inner.appendChild(createRotationEditor(object));
+  inner.appendChild(createScaleEditor(object));
+  inner.appendChild(createColorEditor(object));
+
+  propertyPanel.appendChild(inner);
+}
+
+
+// 10. メイン選択の更新
 function selectPrimaryObject(object, selectedObjects = null) {
-  if (object && objectLock.isLocked(object)) {
+  activeGroup = null;
+
+  if (object && isObjectEffectivelyLocked(object)) {
     object = null;
+    selectedObjects = [];
   }
 
   objectManager.select(object);
@@ -169,8 +243,7 @@ function selectPrimaryObject(object, selectedObjects = null) {
 }
 
 
-// 9. 複数選択の管理
-
+// 11. 複数選択の管理
 const multiSelectionController = createMultiSelectionController({
   multiSelection,
   visual: multiSelectionVisual,
@@ -184,52 +257,35 @@ const multiSelectionController = createMultiSelectionController({
   }
 });
 
-// 10. 通常の単体選択
+
+// 12. 通常の単体選択
 function selectObject(object) {
-  multiSelectionController.select(object, false);
-}
-
-// 11. プロパティ表示
-function refreshProperties() {
-  propertyPanel.innerHTML = "";
-
-  const object = getSelectedObject();
-
-  if (!object) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent =
-      "オブジェクトを選択すると、ここで詳細を編集できるよ。";
-
-    propertyPanel.appendChild(empty);
+  if (object && isObjectEffectivelyLocked(object)) {
+    alert("ロック中のオブジェクトは選択・編集できません。");
     return;
   }
 
-  const inner = document.createElement("div");
-  inner.className = "properties-inner";
-
-  inner.appendChild(createNameEditor(object, refreshEditorUI));
-  inner.appendChild(createPositionEditor(object, refreshEditorUI));
-  inner.appendChild(createRotationEditor(object));
-  inner.appendChild(createScaleEditor(object));
-  inner.appendChild(createColorEditor(object));
-
-  propertyPanel.appendChild(inner);
+  activeGroup = null;
+  multiSelectionController.select(object, false);
 }
 
-// 12. オブジェクト一覧
+
+// 13. オブジェクト一覧
 objectListView = createObjectList(
   objectListContainer,
   selectObject
 );
 
 
+// 14. グループ選択
 function selectGroup(group) {
   if (!group || !objectGroup.isGroup(group)) return;
 
   multiSelectionController.clear();
 
   activeGroup = group;
+
+  objectManager.select(null);
 
   transform.attach(group);
 
@@ -238,22 +294,26 @@ function selectGroup(group) {
 }
 
 
+// 15. グループ名変更
 function renameGroup(group, newName) {
   if (!group || !objectGroup.isGroup(group)) return;
+
+  if (objectGroup.isGroupLocked(group)) {
+    alert("ロック中のグループ名は変更できません。");
+    return;
+  }
 
   const command = createRenameGroupCommand(
     group,
     newName,
-    () => {
-      refreshEditorUI();
-    }
+    refreshEditorUI
   );
 
   history.execute(command);
 }
 
 
-// 13. 階層UI
+// 16. 階層UI
 hierarchyUI = createHierarchyUI({
   listContainer: hierarchyListContainer,
   controlsContainer: hierarchyControlsContainer,
@@ -272,12 +332,15 @@ hierarchyUI = createHierarchyUI({
   onRenameGroup: renameGroup
 });
 
-// 14. 履歴変更時
+
+// 17. 履歴変更時
 function onHistoryChange(object) {
+  activeGroup = null;
   selectObject(object);
 }
 
-// 15. オブジェクト追加
+
+// 18. オブジェクト追加
 function addObject(type) {
   const geometry = createGeometry(type);
 
@@ -306,9 +369,9 @@ function addCylinder() {
 }
 
 
-// 16. オブジェクト削除
+// 19. オブジェクト削除
 function deleteSelectedObject() {
-  // グループが選択されている場合
+  // グループ選択中
   if (activeGroup && objectGroup.isGroup(activeGroup)) {
     if (objectGroup.isGroupLocked(activeGroup)) {
       alert("ロック中のグループは削除できません。先にロックを解除してください。");
@@ -328,7 +391,7 @@ function deleteSelectedObject() {
   if (targets.length === 0) return;
 
   for (const object of targets) {
-    if (objectLock.isLocked(object)) {
+    if (isObjectEffectivelyLocked(object)) {
       alert("ロック中のオブジェクトが含まれているため削除できません。");
       return;
     }
@@ -341,6 +404,7 @@ function deleteSelectedObject() {
 
   transform.detach();
   multiSelectionController.clear();
+  activeGroup = null;
 
   const command = createDeleteObjectsCommand(
     objectManager,
@@ -354,8 +418,14 @@ function deleteSelectedObject() {
   refreshProperties();
 }
 
- // 17. オブジェクト複製
+
+// 20. オブジェクト複製
 function duplicateSelectedObject() {
+  if (activeGroup && objectGroup.isGroup(activeGroup)) {
+    alert("グループの複製機能は現在準備中です。");
+    return;
+  }
+
   const selectedObjects = multiSelection.getAll();
 
   const targets = selectedObjects.length > 0
@@ -365,7 +435,7 @@ function duplicateSelectedObject() {
   if (targets.length === 0) return;
 
   for (const object of targets) {
-    if (objectLock.isLocked(object)) {
+    if (isObjectEffectivelyLocked(object)) {
       alert("ロック中のオブジェクトが含まれているため複製できません。");
       return;
     }
@@ -390,6 +460,7 @@ function duplicateSelectedObject() {
 
   transform.detach();
   multiSelectionController.clear();
+  activeGroup = null;
 
   history.execute(command);
 
@@ -397,6 +468,8 @@ function duplicateSelectedObject() {
   refreshProperties();
 }
 
+
+// 21. 複製ボタン
 createDuplicateButton({
   button: document.querySelector("#duplicateObject"),
   getSelectedObject,
@@ -404,8 +477,13 @@ createDuplicateButton({
 });
 
 
-// グループ化
+// 22. グループ化
 function groupSelectedObjects() {
+  if (activeGroup) {
+    alert("すでにグループが選択されています。");
+    return;
+  }
+
   const selectedObjects = multiSelection.getAll();
 
   const targets = selectedObjects.length > 0
@@ -418,14 +496,20 @@ function groupSelectedObjects() {
   }
 
   for (const object of targets) {
-    if (objectLock.isLocked(object)) {
+    if (isObjectEffectivelyLocked(object)) {
       alert("ロック中のオブジェクトが含まれているためグループ化できません。");
+      return;
+    }
+
+    if (hierarchy.hasChildren(object)) {
+      alert("子オブジェクトがあるものは現在グループ化できません。");
       return;
     }
   }
 
   transform.detach();
   multiSelectionController.clear();
+  activeGroup = null;
 
   const command = createGroupCommand(
     objectGroup,
@@ -448,29 +532,30 @@ function groupSelectedObjects() {
 }
 
 
-// グループ解除
+// 23. グループ解除
 function ungroupSelectedObject() {
   if (!activeGroup || !objectGroup.isGroup(activeGroup)) {
     alert("グループを選択してください。");
     return;
   }
 
-  // グループがロックされているか確認
   if (objectGroup.isGroupLocked(activeGroup)) {
     alert("ロック中のグループは解除できません。先にロックを解除してください。");
     return;
   }
 
+  const group = activeGroup;
+
   transform.detach();
 
   const command = createUngroupCommand(
     objectGroup,
-    activeGroup,
-    group => {
-      activeGroup = group;
+    group,
+    result => {
+      activeGroup = result || null;
 
-      if (group) {
-        transform.attach(group);
+      if (result) {
+        transform.attach(result);
       } else {
         transform.detach();
       }
@@ -483,7 +568,8 @@ function ungroupSelectedObject() {
   history.execute(command);
 }
 
-// グループ化・グループ解除ボタン
+
+// 24. グループ操作ボタン
 document
   .querySelector("#groupObjects")
   ?.addEventListener("click", groupSelectedObjects);
@@ -493,8 +579,16 @@ document
   ?.addEventListener("click", ungroupSelectedObject);
 
 
-// 18. 親子関係の設定
+// 25. 親子関係の設定
 function setObjectParent(child, parent) {
+  if (
+    isObjectEffectivelyLocked(child) ||
+    isObjectEffectivelyLocked(parent)
+  ) {
+    alert("ロック中のオブジェクトは親子関係を変更できません。");
+    return;
+  }
+
   if (!hierarchy.canSetParent(child, parent)) {
     alert("この親子関係は設定できません。");
     return;
@@ -515,8 +609,14 @@ function setObjectParent(child, parent) {
   }
 }
 
-// 19. 親子関係の解除
+
+// 26. 親子関係の解除
 function removeObjectParent(child) {
+  if (isObjectEffectivelyLocked(child)) {
+    alert("ロック中のオブジェクトは親子関係を変更できません。");
+    return;
+  }
+
   const command = createRemoveParentCommand(
     hierarchy,
     child,
@@ -531,8 +631,16 @@ function removeObjectParent(child) {
   }
 }
 
-// 20. 階層の並び替え
+
+// 27. 階層の並び替え
 function moveHierarchyObject(object, target, position) {
+  if (
+    isObjectEffectivelyLocked(object) ||
+    isObjectEffectivelyLocked(target)
+  ) {
+    return;
+  }
+
   if (!hierarchyOrder.canMove(object, target)) {
     return;
   }
@@ -565,7 +673,8 @@ function moveHierarchyObject(object, target, position) {
   }
 }
 
-// 21. 表示・非表示の変更
+
+// 28. 表示・非表示の変更
 function handleVisibilityChange(object, newVisible) {
   const command = createVisibilityCommand(
     visibility,
@@ -579,7 +688,8 @@ function handleVisibilityChange(object, newVisible) {
   }
 }
 
-// 22. ロック・ロック解除
+
+// 29. ロック・ロック解除
 function handleLockChange(object, newLocked) {
   const command = createLockCommand(
     objectLock,
@@ -591,11 +701,14 @@ function handleLockChange(object, newLocked) {
         multiSelection.has(object)
       ) {
         multiSelectionController.select(
-          getSelectedObject() === object ? null : getSelectedObject(),
+          getSelectedObject() === object
+            ? null
+            : getSelectedObject(),
           false
         );
       } else {
         refreshEditorUI();
+        refreshProperties();
       }
     }
   );
@@ -605,7 +718,8 @@ function handleLockChange(object, newLocked) {
   }
 }
 
-// 23. 複数選択モードボタン
+
+// 30. 複数選択モード
 function updateMultiSelectionButton() {
   if (!multiSelectionButton) return;
 
@@ -635,7 +749,8 @@ multiSelectionButton?.addEventListener("click", () => {
 
 updateMultiSelectionButton();
 
-// 24. Undo・Redo
+
+// 31. Undo・Redo
 function undo() {
   history.undo();
 }
@@ -644,7 +759,8 @@ function redo() {
   history.redo();
 }
 
-// 25. 3D画面からの選択
+
+// 32. 3D画面からの選択
 createObjectSelection({
   camera,
   renderer,
@@ -656,7 +772,8 @@ createObjectSelection({
   onSelect: selectObject
 });
 
-// 26. ボタン接続
+
+// 33. ボタン接続
 document.querySelector("#addCube")
   ?.addEventListener("click", addCube);
 
@@ -690,7 +807,8 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-// 27. キーボードショートカット
+
+// 34. キーボードショートカット
 document.addEventListener("keydown", event => {
   const target = event.target;
 
@@ -720,7 +838,8 @@ document.addEventListener("keydown", event => {
   }
 });
 
-// 28. 初期キューブ
+
+// 35. 初期キューブ
 const initialCubeGeometry = createGeometry("cube");
 
 const initialCube = objectManager.add(
@@ -732,7 +851,8 @@ if (initialCube) {
   selectObject(initialCube);
 }
 
-// 29. 描画ループ
+
+// 36. 描画ループ
 function animate() {
   requestAnimationFrame(animate);
 
