@@ -4,6 +4,7 @@ import * as THREE from "three";
 export function createMeshPicker({
   camera,
   renderer,
+  orbitControls = null,
   mesh,
   topology,
   visuals,
@@ -21,12 +22,35 @@ export function createMeshPicker({
   let mode = "vertex";
   let multiSelect = false;
   let pointerStart = null;
+  let previousOrbitEnabled = null;
 
   const selected = {
     vertices: new Set(),
     edges: new Set(),
     faces: new Set()
   };
+
+  // -------------------------
+  // OrbitControls control
+  // -------------------------
+
+  function disableOrbitForSelection() {
+    if (!orbitControls) return;
+
+    previousOrbitEnabled = orbitControls.enabled;
+    orbitControls.enabled = false;
+  }
+
+  function restoreOrbitAfterSelection() {
+    if (!orbitControls || previousOrbitEnabled === null) return;
+
+    orbitControls.enabled = previousOrbitEnabled;
+    previousOrbitEnabled = null;
+  }
+
+  // -------------------------
+  // Selection box
+  // -------------------------
 
   const selectionBox = document.createElement("div");
 
@@ -65,6 +89,10 @@ export function createMeshPicker({
   function hideSelectionBox() {
     selectionBox.style.display = "none";
   }
+
+  // -------------------------
+  // Selection
+  // -------------------------
 
   function getActiveSet() {
     if (mode === "vertex") return selected.vertices;
@@ -120,6 +148,10 @@ export function createMeshPicker({
     notifySelection();
   }
 
+  // -------------------------
+  // Position helpers
+  // -------------------------
+
   function getWorldPosition(vertexId) {
     const vertex = topology.getVertex(vertexId);
     if (!vertex) return null;
@@ -162,6 +194,10 @@ export function createMeshPicker({
       point.y <= rect.bottom
     );
   }
+
+  // -------------------------
+  // Geometry intersection
+  // -------------------------
 
   function orientation(a, b, c) {
     return (
@@ -248,6 +284,10 @@ export function createMeshPicker({
       pointInTriangle(p, points[0], points[1], points[2])
     );
   }
+
+  // -------------------------
+  // Find targets
+  // -------------------------
 
   function findVertex() {
     const candidates = topology.vertices.map(vertex => ({
@@ -365,6 +405,10 @@ export function createMeshPicker({
     if (id !== null) select(id);
   }
 
+  // -------------------------
+  // Rectangle selection
+  // -------------------------
+
   function selectByRectangle(start, end) {
     const rect = getRect(start, end);
     const activeSet = getActiveSet();
@@ -425,6 +469,9 @@ export function createMeshPicker({
     ) {
       return;
     }
+
+    // カメラ操作を先に止める
+    disableOrbitForSelection();
 
     pointerStart = {
       x: event.clientX,
@@ -490,10 +537,14 @@ export function createMeshPicker({
     pointerStart = null;
     hideSelectionBox();
 
-    if (Math.hypot(dx, dy) < 6) {
-      selectAt(end.x, end.y);
-    } else {
-      selectByRectangle(start, end);
+    try {
+      if (Math.hypot(dx, dy) < 6) {
+        selectAt(end.x, end.y);
+      } else {
+        selectByRectangle(start, end);
+      }
+    } finally {
+      restoreOrbitAfterSelection();
     }
   }
 
@@ -509,6 +560,15 @@ export function createMeshPicker({
 
     pointerStart = null;
     hideSelectionBox();
+    restoreOrbitAfterSelection();
+  }
+
+  function handleLostPointerCapture() {
+    if (!pointerStart) return;
+
+    pointerStart = null;
+    hideSelectionBox();
+    restoreOrbitAfterSelection();
   }
 
   // -------------------------
@@ -536,14 +596,17 @@ export function createMeshPicker({
   element.addEventListener("pointermove", handlePointerMove);
   element.addEventListener("pointerup", handlePointerUp);
   element.addEventListener("pointercancel", handlePointerCancel);
+  element.addEventListener("lostpointercapture", handleLostPointerCapture);
 
   function dispose() {
     element.removeEventListener("pointerdown", handlePointerDown, true);
     element.removeEventListener("pointermove", handlePointerMove);
     element.removeEventListener("pointerup", handlePointerUp);
     element.removeEventListener("pointercancel", handlePointerCancel);
+    element.removeEventListener("lostpointercapture", handleLostPointerCapture);
 
     pointerStart = null;
+    restoreOrbitAfterSelection();
     hideSelectionBox();
     selectionBox.remove();
   }
