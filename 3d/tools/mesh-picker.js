@@ -28,8 +28,11 @@ export function createMeshPicker({
   };
 
   function getActiveSet() {
-    return selected[`${mode}s`];
-  }
+  if (mode === "vertex") return selected.vertices;
+  if (mode === "edge") return selected.edges;
+  if (mode === "face") return selected.faces;
+  return null;
+}
 
   function getWorldPosition(vertexId) {
     const vertex = topology.getVertex(vertexId);
