@@ -16,7 +16,8 @@ export function createHierarchyView(
   objectLock,
   onLockChange,
   objectGroup,
-  onSelectGroup
+  onSelectGroup,
+  onRenameGroup
 ) {
   const collapsedObjects = new Set();
 
