@@ -220,12 +220,32 @@ export function createHierarchyView(
           objectGroup.isGroupVisible(group) ? "👁" : "🙈";
       });
 
+      
+      // グループのロック・解除ボタン
+      const lockButton = document.createElement("button");
+      lockButton.className = "hierarchy-toggle";
+      lockButton.textContent =
+        objectGroup.isGroupLocked(group) ? "🔒" : "🔓";
+      lockButton.title = "グループのロック・解除";
+
+      lockButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        objectGroup.toggleGroupLock(group);
+
+        lockButton.textContent =
+          objectGroup.isGroupLocked(group) ? "🔒" : "🔓";
+      });
+
       row.append(
         toggle,
         button,
         renameButton,
-        visibilityButton
+        visibilityButton,
+        lockButton
       );
+
 
       wrapper.appendChild(row);
 
