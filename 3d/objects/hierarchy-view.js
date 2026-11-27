@@ -172,32 +172,37 @@ export function createHierarchyView(
         }
       });
 
-button.addEventListener("dblclick", event => {
-  event.preventDefault();
-  event.stopPropagation();
+      // グループ名変更ボタン
+      const renameButton = document.createElement("button");
+      renameButton.className = "hierarchy-toggle";
+      renameButton.textContent = "✏️";
+      renameButton.title = "グループ名を変更";
 
-  const currentName = group.name || "グループ";
-  const newName = prompt(
-    "新しいグループ名を入力してください",
-    currentName
-  );
+      renameButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
 
-  if (newName === null) return;
+        const currentName = group.name || "グループ";
+        const newName = prompt(
+          "新しいグループ名を入力してください",
+          currentName
+        );
 
-  const trimmedName = newName.trim();
+        if (newName === null) return;
 
-  if (!trimmedName) {
-    alert("グループ名を入力してください。");
-    return;
-  }
+        const trimmedName = newName.trim();
 
-  if (onRenameGroup) {
-    onRenameGroup(group, trimmedName);
-  }
-});
+        if (!trimmedName) {
+          alert("グループ名を入力してください。");
+          return;
+        }
 
+        if (onRenameGroup) {
+          onRenameGroup(group, trimmedName);
+        }
+      });
 
-      row.append(toggle, button);
+      row.append(toggle, button, renameButton);
       wrapper.appendChild(row);
 
       if (hasChildren && !collapsedObjects.has(group)) {
