@@ -6,6 +6,9 @@ export function createObjectGroup(scene, objectManager) {
   const groupVisibility = new Map();
   const groupLocks = new Map();
 
+  // 削除したグループの情報を一時保存
+  const deletedGroups = new WeakMap();
+
   let groupCounter = 0;
 
   function isManaged(object) {
@@ -61,9 +64,48 @@ export function createObjectGroup(scene, objectManager) {
     }
 
     scene.remove(group);
+
     groups.delete(group);
     groupVisibility.delete(group);
     groupLocks.delete(group);
+
+    return true;
+  }
+
+  // グループを削除する
+  // 子オブジェクトは呼び出し元で先に退避する
+  function deleteGroup(group) {
+    if (!groups.has(group)) return false;
+
+    deletedGroups.set(group, {
+      children: [...groups.get(group)],
+      visible: isGroupVisible(group),
+      locked: isGroupLocked(group)
+    });
+
+    scene.remove(group);
+    groups.delete(group);
+
+    return true;
+  }
+
+  // 削除したグループを復元する
+  function restoreGroup(group) {
+    if (!group || groups.has(group)) return false;
+
+    const info = deletedGroups.get(group);
+
+    if (!info) return false;
+
+    scene.add(group);
+
+    groups.set(group, [...info.children]);
+    groupVisibility.set(group, info.visible);
+    groupLocks.set(group, info.locked);
+
+    group.visible = info.visible;
+
+    deletedGroups.delete(group);
 
     return true;
   }
@@ -136,6 +178,8 @@ export function createObjectGroup(scene, objectManager) {
   return {
     createGroup,
     ungroup,
+    deleteGroup,
+    restoreGroup,
     isGroup,
     getGroupObjects,
     getAllGroups,
