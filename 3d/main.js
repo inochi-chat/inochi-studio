@@ -138,7 +138,8 @@ const transform = createTransformTool(
   renderer,
   scene,
   orbit,
-  objectLock
+  objectLock,
+  objectGroup
 );
 
 transform.addEventListener("mouseUp", () => {
