@@ -21,10 +21,13 @@ export function createMeshEditor({
   let selectedVertices = new Set();
   let editing = false;
   let multiSelect = false;
-
   let pointerStart = null;
 
   const pointSize = 18;
+
+  function positionKey(x, y, z) {
+    return `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;
+  }
 
   function getUniqueVertices(mesh) {
     const position = mesh.geometry.attributes.position;
@@ -36,23 +39,20 @@ export function createMeshEditor({
       const y = position.getY(i);
       const z = position.getZ(i);
 
-      const key = [
-        x.toFixed(5),
-        y.toFixed(5),
-        z.toFixed(5)
-      ].join(",");
+      const key = positionKey(x, y, z);
 
       if (!lookup.has(key)) {
-        const id = unique.length;
-
-        lookup.set(key, id);
-
-        unique.push({
-          id,
-          sourceIndex: i,
+        const vertex = {
+          id: unique.length,
+          sourceIndices: [],
           position: new THREE.Vector3(x, y, z)
-        });
+        };
+
+        lookup.set(key, vertex);
+        unique.push(vertex);
       }
+
+      lookup.get(key).sourceIndices.push(i);
     }
 
     return unique;
@@ -102,7 +102,6 @@ export function createMeshEditor({
     );
 
     vertexPoints.renderOrder = 10;
-
     activeMesh.add(vertexPoints);
 
     updateVertexColors();
@@ -127,6 +126,27 @@ export function createMeshEditor({
     colors.needsUpdate = true;
   }
 
+  function refreshVertexPositions() {
+    if (!activeMesh || !vertexGeometry) return;
+
+    vertices = getUniqueVertices(activeMesh);
+
+    const positions = vertexGeometry.attributes.position;
+
+    positions.array = new Float32Array(
+      vertices.flatMap(vertex => [
+        vertex.position.x,
+        vertex.position.y,
+        vertex.position.z
+      ])
+    );
+
+    positions.count = vertices.length;
+    positions.needsUpdate = true;
+
+    updateVertexColors();
+  }
+
   function removeVertexVisual() {
     if (vertexPoints && activeMesh) {
       activeMesh.remove(vertexPoints);
@@ -142,7 +162,11 @@ export function createMeshEditor({
   }
 
   function enterEditMode(mesh) {
-    if (!mesh || !mesh.isMesh || !mesh.geometry?.attributes?.position) {
+    if (
+      !mesh ||
+      !mesh.isMesh ||
+      !mesh.geometry?.attributes?.position
+    ) {
       console.warn("メッシュ編集できるオブジェクトを選択してください。");
       return false;
     }
@@ -189,22 +213,19 @@ export function createMeshEditor({
 
   function clearSelection() {
     selectedVertices.clear();
-
     updateVertexColors();
-
     onSelectionChange([]);
   }
 
   function getSelectedVertices() {
-    return [...selectedVertices].map(id => {
-      const vertex = vertices[id];
-
-      return {
+    return [...selectedVertices]
+      .map(id => vertices[id])
+      .filter(Boolean)
+      .map(vertex => ({
         id: vertex.id,
-        sourceIndex: vertex.sourceIndex,
+        sourceIndices: [...vertex.sourceIndices],
         position: vertex.position.clone()
-      };
-    });
+      }));
   }
 
   function selectVertex(id) {
@@ -221,7 +242,6 @@ export function createMeshEditor({
     }
 
     updateVertexColors();
-
     onSelectionChange(getSelectedVertices());
   }
 
@@ -242,7 +262,6 @@ export function createMeshEditor({
 
     pointerStart = null;
 
-    // カメラ操作などのドラッグは選択扱いにしない
     if (Math.hypot(dx, dy) > 8) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
@@ -254,7 +273,12 @@ export function createMeshEditor({
       -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.params.Points.threshold =
-      Math.max(0.015, camera.position.distanceTo(activeMesh.getWorldPosition(new THREE.Vector3())) * 0.018);
+      Math.max(
+        0.015,
+        camera.position.distanceTo(
+          activeMesh.getWorldPosition(new THREE.Vector3())
+        ) * 0.018
+      );
 
     raycaster.setFromCamera(pointer, camera);
 
@@ -293,6 +317,7 @@ export function createMeshEditor({
     setMultiSelect,
     clearSelection,
     getSelectedVertices,
+    refreshVertexPositions,
     isEditing: () => editing,
     getActiveMesh: () => activeMesh,
     dispose
