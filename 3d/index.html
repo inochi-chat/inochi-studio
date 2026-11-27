@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#17152b">
   <title>Inochi Studio - 3D Editor</title>
 
   <script type="importmap">
@@ -20,12 +21,59 @@
       box-sizing: border-box;
     }
 
+    :root {
+      --bg: #17152b;
+      --panel: #211d39;
+      --panel-light: #29233f;
+      --panel-hover: #493b70;
+      --border: #493f67;
+      --accent: #a48be8;
+      --accent-light: #c9b5ff;
+      --text: #f5f0ff;
+      --muted: #aaa0c8;
+    }
+
     body {
       margin: 0;
-      background: #17152b;
-      color: #f8f5ff;
-      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       overflow: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      min-height: 40px;
+      padding: 9px 10px;
+      margin: 0 0 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #30284c;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      touch-action: manipulation;
+    }
+
+    button:hover {
+      background: var(--panel-hover);
+      border-color: var(--accent);
+    }
+
+    button:active {
+      background: #62518d;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--accent-light);
+      outline-offset: 2px;
     }
 
     header {
@@ -34,22 +82,30 @@
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
-      background: #211d39;
-      border-bottom: 1px solid #40375e;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
     }
 
     .logo {
-      font-weight: bold;
-      letter-spacing: 2px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      font-size: 14px;
     }
 
     header a {
-      color: #c9b5ff;
+      color: var(--accent-light);
       text-decoration: none;
       font-size: 13px;
+      padding: 9px 12px;
+      border-radius: 7px;
+    }
+
+    header a:hover {
+      background: var(--panel-hover);
     }
 
     /* メインレイアウト */
+
     .editor {
       --sidebar-width: 220px;
 
@@ -69,145 +125,113 @@
     .sidebar {
       min-width: 0;
       min-height: 0;
-      background: #211d39;
-      padding: 12px;
+      padding: 14px 12px;
       overflow-y: auto;
       overflow-x: hidden;
-      border-right: 1px solid #40375e;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      scrollbar-width: thin;
+      scrollbar-color: #62518d transparent;
     }
+
+    .sidebar h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-light);
+      letter-spacing: 0.5px;
+      margin: 17px 0 9px;
+    }
+
+    .sidebar h3:first-child {
+      margin-top: 3px;
+    }
+
+    .sidebar > button {
+      width: 100%;
+    }
+
+    /* 右側プロパティ */
 
     .properties {
       grid-column: 4;
       grid-row: 1;
       border-right: none;
-      border-left: 1px solid #40375e;
+      border-left: 1px solid var(--border);
     }
 
-    h3 {
-      font-size: 12px;
-      color: #c9b5ff;
-      margin: 12px 0;
-    }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 6px;
-      border: 1px solid #51466f;
-      border-radius: 7px;
-      background: #30284c;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:active {
-      background: #62518d;
-    }
-
-    #duplicateObject {
-      background: #493b70;
-      border-color: #7964a8;
-    }
-
-    #duplicateObject:hover {
-      background: #604b91;
-      border-color: #a48be8;
-    }
-
-    .history-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-
-    .history-buttons button {
-      margin-bottom: 0;
-      background: #493b70;
-      border-color: #7964a8;
-      font-size: 12px;
-    }
-
-    .object-item.selected {
-      background: #6854a0;
-      border-color: #c9b5ff;
-    }
-
-    /* 3D画面 */
-    .viewport {
-      grid-column: 3;
-      grid-row: 1;
-      position: relative;
+    .properties-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       min-width: 0;
-      min-height: 0;
+      margin-bottom: 12px;
     }
 
-    #threeCanvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
+    .properties-header h3 {
+      margin: 4px 0;
     }
 
-    
-/* メッシュ編集ツールバー */
-#meshToolbarContainer {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  z-index: 30;
-  max-height: 48%;
-  overflow-y: auto;
-  pointer-events: none;
-  scrollbar-width: thin;
-}
+    #togglePropertiesButton {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 88px;
+      min-height: 38px;
+      padding: 6px 10px;
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      background: #493b70;
+      border-color: #7964a8;
+    }
 
-#meshToolbarContainer .mesh-toolbar {
-  width: 100%;
-  max-width: 560px;
-  margin: 0 auto;
-  pointer-events: auto;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
-}
+    .properties.collapsed #propertyPanel {
+      display: none;
+    }
 
-@media (max-width: 750px) {
-  #meshToolbarContainer {
-    left: 5px;
-    right: 5px;
-    bottom: 5px;
-    max-height: 52%;
-  }
+    /* デスクトップでプロパティを細くする */
 
-  #meshToolbarContainer .mesh-toolbar {
-    padding: 7px;
-    gap: 6px;
-  }
+    .editor.properties-collapsed {
+      grid-template-columns:
+        var(--sidebar-width)
+        10px
+        minmax(0, 1fr)
+        48px;
+    }
 
-  #meshToolbarContainer .mesh-toolbar button {
-    min-height: 44px;
-    padding: 4px 2px;
-    font-size: 11px;
-  }
-}
+    .properties.collapsed {
+      padding: 10px 4px;
+      overflow: hidden;
+    }
 
-    
-    .viewport-label {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      color: #aaa0c8;
+    .properties.collapsed .properties-header {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .properties.collapsed .properties-header h3 {
+      writing-mode: vertical-rl;
+      margin: 5px auto;
+      letter-spacing: 2px;
+    }
+
+    .properties.collapsed #togglePropertiesButton {
+      width: 40px;
+      min-width: 40px;
+      padding: 5px 2px;
       font-size: 11px;
-      pointer-events: none;
+      writing-mode: vertical-rl;
     }
 
-    /* サイドバー伸縮バー */
+    /* 左サイドバーの伸縮バー */
+
     .sidebar-resizer {
       grid-column: 2;
       grid-row: 1;
       position: relative;
-      background: #17152b;
-      border-left: 1px solid #40375e;
-      border-right: 1px solid #40375e;
+      background: var(--bg);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
       cursor: col-resize;
       touch-action: none;
       z-index: 20;
@@ -227,61 +251,152 @@
     }
 
     .sidebar-resizer:active::after {
-      background: #c9b5ff;
+      background: var(--accent-light);
       opacity: 1;
     }
 
-    /* プロパティ */
+    /* 3Dビューポート */
+
+    .viewport {
+      grid-column: 3;
+      grid-row: 1;
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at center, #282342 0%, #17152b 75%);
+    }
+
+    #threeCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .viewport-label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    /* メッシュ編集ツールバー */
+
+    #meshToolbarContainer {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 30;
+      max-height: 48%;
+      overflow-y: auto;
+      pointer-events: none;
+      scrollbar-width: thin;
+    }
+
+    #meshToolbarContainer .mesh-toolbar {
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      pointer-events: auto;
+      box-shadow: 0 5px 22px rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    /* 操作履歴 */
+
+    .history-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .history-buttons button {
+      margin: 0;
+      background: #493b70;
+      border-color: #7964a8;
+      font-size: 12px;
+    }
+
+    /* 複製 */
+
+    #duplicateObject {
+      background: #493b70;
+      border-color: #7964a8;
+    }
+
+    #duplicateObject:hover {
+      background: #604b91;
+      border-color: var(--accent-light);
+    }
+
+    #multiSelectionButton.active {
+      background: #604b91;
+      border-color: var(--accent-light);
+      color: white;
+    }
+
+    /* プロパティ入力 */
+
     .property-name {
       width: 100%;
-      padding: 9px;
-      background: #17152b;
+      padding: 10px;
+      background: var(--bg);
       color: white;
-      border: 1px solid #51466f;
-      border-radius: 6px;
-      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      margin-bottom: 10px;
     }
 
     .property-row {
       display: grid;
-      grid-template-columns: 22px minmax(0, 1fr);
+      grid-template-columns: 24px minmax(0, 1fr);
       align-items: center;
-      gap: 6px;
-      margin-bottom: 7px;
+      gap: 7px;
+      margin-bottom: 9px;
     }
 
     .property-row label {
       font-size: 12px;
-      color: #aaa0c8;
+      color: var(--muted);
     }
 
     .property-row input {
       width: 100%;
       min-width: 0;
-      padding: 8px 5px;
-      border: 1px solid #51466f;
-      border-radius: 5px;
-      background: #17152b;
+      padding: 9px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
       color: white;
     }
 
     .property-row input[type="color"] {
-      height: 36px;
+      height: 38px;
       padding: 3px;
     }
 
     .property-group {
-      padding: 10px 0;
-      border-top: 1px solid #40375e;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
     }
 
     .empty {
-      color: #9289a9;
+      color: #aaa0c8;
       font-size: 12px;
       line-height: 1.8;
+      padding: 5px 2px;
     }
 
-    /* オブジェクト一覧 */
+    /* オブジェクト階層 */
+
     .hierarchy-item {
       display: flex;
       flex-direction: column;
@@ -290,30 +405,10 @@
       min-width: 0;
     }
 
-    .hierarchy-item .object-item {
-      width: 100%;
-      text-align: left;
-      background: #29233f;
-      border: 1px solid #493b70;
-      color: #eee8ff;
-      border-radius: 6px;
-      padding: 8px 10px;
-      cursor: pointer;
-    }
-
-    .hierarchy-item .object-item:hover {
-      background: #493b70;
-    }
-
-    .hierarchy-item .object-item.selected {
-      background: #604b91;
-      border-color: #a48be8;
-    }
-
-    /* 階層の1行 */
     .hierarchy-row {
       display: flex;
       align-items: center;
+      justify-content: flex-start;
       gap: 4px;
       width: 100%;
       min-width: 0;
@@ -323,11 +418,11 @@
       flex: 0 0 24px;
       width: 24px;
       min-width: 24px;
-      padding: 6px 0;
+      padding: 5px 0;
       margin: 0;
       background: transparent;
       border: none;
-      color: #c9b5ff;
+      color: var(--accent-light);
       font-size: 11px;
     }
 
@@ -339,41 +434,63 @@
       flex: 1 1 0;
       width: 0;
       min-width: 20px;
+      max-width: 150px;
       margin: 0;
-      padding: 8px 4px;
+      padding: 9px 5px;
       text-align: left;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: #eee8ff;
+      font-size: 12px;
     }
 
-    .hierarchy-row > div {
-      flex: 0 0 auto;
-      width: auto;
-      min-width: 0;
+    .hierarchy-row .object-item:hover {
+      background: var(--panel-hover);
     }
 
-    .hierarchy-row .visibility-button {
+    .hierarchy-row .object-item.selected {
+      background: #604b91;
+      border-color: var(--accent-light);
+    }
+
+    .hierarchy-row .visibility-container {
+      flex: 0 0 38px;
+      width: 38px;
+      min-width: 38px;
+      display: flex;
+    }
+
+    .hierarchy-row .lock-container {
+      flex: 0 0 34px;
+      width: 34px;
+      min-width: 34px;
+      display: flex;
+    }
+
+    .hierarchy-row .visibility-container button {
       width: 38px;
       min-width: 38px;
       height: 38px;
-      padding: 4px 2px;
+      padding: 3px 1px;
       margin: 0;
-      overflow: hidden;
-      white-space: nowrap;
       font-size: 11px;
     }
 
-    .hierarchy-row .lock-button {
+    .hierarchy-row .lock-container button {
       width: 34px;
       min-width: 34px;
       height: 38px;
-      padding: 4px 2px;
+      padding: 3px 1px;
       margin: 0;
       font-size: 13px;
     }
 
     /* 親子関係の操作パネル */
+
     .hierarchy-controls {
       display: flex;
       flex-direction: column;
@@ -381,8 +498,8 @@
       margin-top: 16px;
       padding: 12px;
       background: #211b35;
-      border: 1px solid #493b70;
-      border-radius: 8px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
       width: 100%;
       min-width: 0;
     }
@@ -399,30 +516,41 @@
     .hierarchy-controls select {
       width: 100%;
       min-width: 0;
-      padding: 8px;
+      padding: 9px;
       color: #eee8ff;
-      background: #29233f;
+      background: var(--panel-light);
       border: 1px solid #604b91;
-      border-radius: 6px;
+      border-radius: 7px;
     }
 
     .hierarchy-controls button {
       width: 100%;
       padding: 9px;
-      margin-bottom: 0;
+      margin: 0;
       color: white;
       background: #493b70;
       border: 1px solid #7964a8;
-      border-radius: 6px;
-      cursor: pointer;
+      border-radius: 7px;
     }
 
-    .hierarchy-controls button:hover {
-      background: #604b91;
-    }
+    /* スマートフォン */
 
-    /* スマホ */
     @media (max-width: 750px) {
+      header {
+        height: 50px;
+        padding: 0 10px;
+      }
+
+      .logo {
+        font-size: 12px;
+        letter-spacing: 1px;
+      }
+
+      header a {
+        font-size: 12px;
+        padding: 8px;
+      }
+
       .editor {
         --sidebar-width: 165px;
 
@@ -434,12 +562,14 @@
         grid-template-rows:
           minmax(0, 1fr)
           210px;
+
+        height: calc(100dvh - 50px);
       }
 
       .sidebar {
         grid-column: 1;
         grid-row: 1;
-        padding: 10px;
+        padding: 10px 8px;
       }
 
       .viewport {
@@ -451,7 +581,7 @@
         grid-column: 1 / 4;
         grid-row: 2;
         border-left: none;
-        border-top: 1px solid #40375e;
+        border-top: 1px solid var(--border);
         padding: 8px 12px;
       }
 
@@ -460,103 +590,118 @@
         grid-row: 1;
       }
 
+      .properties-header {
+        margin-bottom: 6px;
+      }
+
+      .properties-header h3 {
+        margin: 4px 0;
+      }
+
+      .properties.collapsed {
+        padding: 5px 10px;
+      }
+
+      .properties.collapsed .properties-header {
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .properties.collapsed .properties-header h3 {
+        writing-mode: horizontal-tb;
+        margin: 5px 0;
+        letter-spacing: 0;
+      }
+
+      .properties.collapsed #togglePropertiesButton {
+        width: auto;
+        min-width: 88px;
+        min-height: 36px;
+        padding: 5px 10px;
+        writing-mode: horizontal-tb;
+      }
+
+      .editor.properties-collapsed {
+        grid-template-rows:
+          minmax(0, 1fr)
+          48px;
+      }
+
       .properties-inner {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px 15px;
-      }
-
-      .properties h3 {
-        margin: 5px 0;
+        gap: 8px 12px;
       }
 
       .property-group {
-        padding: 5px 0;
+        padding: 6px 0;
       }
 
-      .logo {
-        font-size: 12px;
+      .sidebar h3 {
+        font-size: 11px;
+        margin: 15px 0 8px;
       }
 
       .sidebar button {
-        font-size: 10px;
-        padding: 8px 3px;
+        min-height: 42px;
+        font-size: 11px;
+        padding: 8px 4px;
       }
 
       .history-buttons button {
         font-size: 10px;
       }
+
+      .hierarchy-row {
+        gap: 3px;
+      }
+
+      .hierarchy-row .object-item {
+        font-size: 11px;
+        padding: 8px 3px;
+      }
+
+      #meshToolbarContainer {
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        max-height: 55%;
+      }
+
+      #meshToolbarContainer .mesh-toolbar {
+        padding: 7px;
+        gap: 6px;
+      }
+
+      #meshToolbarContainer .mesh-toolbar button {
+        min-height: 44px;
+        padding: 4px 2px;
+        font-size: 11px;
+      }
     }
 
-    
-/* 階層ボタンの配置修正 */
-.hierarchy-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-}
+    @media (max-width: 380px) {
+      .editor {
+        --sidebar-width: 145px;
+      }
 
-/* オブジェクト名 */
+      .sidebar {
+        padding-left: 6px;
+        padding-right: 6px;
+      }
 
-.hierarchy-row .object-item {
-  flex: 0 1 auto;
-  width: auto;
-  min-width: 35px;
-  max-width: 110px;
-  margin: 0;
-  padding: 8px 5px;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+      .hierarchy-row .visibility-container {
+        flex-basis: 34px;
+        width: 34px;
+        min-width: 34px;
+      }
 
-/* 表示ボタンの入れ物 */
-.hierarchy-row .visibility-container {
-  flex: 0 0 38px;
-  width: 38px;
-  min-width: 38px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-/* ロックボタンの入れ物 */
-.hierarchy-row .lock-container {
-  flex: 0 0 34px;
-  width: 34px;
-  min-width: 34px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-/* 表示ボタン */
-.hierarchy-row .visibility-container button {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  padding: 3px 1px;
-  margin: 0;
-  font-size: 11px;
-}
-
-/* ロックボタン */
-.hierarchy-row .lock-container button {
-  width: 34px;
-  min-width: 34px;
-  height: 38px;
-  padding: 3px 1px;
-  margin: 0;
-}
-
-#multiSelectionButton.active {
-  background: #604b91;
-  border-color: #c9b5ff;
-  color: #ffffff;
-}
-    
+      .hierarchy-row .visibility-container button {
+        width: 34px;
+        min-width: 34px;
+      }
+    }
   </style>
 </head>
 
@@ -568,6 +713,8 @@
 </header>
 
 <main class="editor">
+
+  <!-- 左側ツールパネル -->
 
   <aside class="sidebar">
 
@@ -583,16 +730,15 @@
     </div>
 
     <h3>編集ツール</h3>
-    <button id="moveTool">移動</button>  
+    <button id="moveTool">移動</button>
     <button id="multiSelectionButton">☐ 複数選択：OFF</button>
     <button id="rotateTool">回転</button>
     <button id="scaleTool">拡大・縮小</button>
-    
+
     <button id="duplicateObject">📑 複製</button>
     <button id="groupObjects">📦 グループ化</button>
     <button id="ungroupObjects">📂 グループ解除</button>
     <button id="deleteObject">🗑️ 削除</button>
-
 
     <h3>オブジェクト一覧</h3>
     <div id="objectList"></div>
@@ -604,36 +750,81 @@
 
   </aside>
 
-  <!-- サイドバー伸縮バー -->
+  <!-- 左右の幅調整 -->
+
   <div
     id="sidebarResizer"
     class="sidebar-resizer"
     aria-label="サイドバー幅の調整"
   ></div>
 
-  
-<div class="viewport">
-  <div class="viewport-label">3D VIEWPORT</div>
+  <!-- 3D画面 -->
 
-  <canvas id="threeCanvas"></canvas>
+  <div class="viewport">
+    <div class="viewport-label">3D VIEWPORT</div>
 
-  <div id="meshToolbarContainer"></div>
-</div>
+    <canvas id="threeCanvas"></canvas>
 
+    <div id="meshToolbarContainer"></div>
+  </div>
+
+  <!-- オブジェクトプロパティ -->
 
   <aside class="sidebar properties">
-    <h3>オブジェクトプロパティ</h3>
+
+    <div class="properties-header">
+      <h3>オブジェクトプロパティ</h3>
+
+      <button
+        id="togglePropertiesButton"
+        type="button"
+        aria-expanded="true"
+      >
+        ▾ 仕舞う
+      </button>
+    </div>
 
     <div id="propertyPanel">
       <p class="empty">
         オブジェクトを選択すると、ここで詳細を編集できるよ。
       </p>
     </div>
+
   </aside>
 
 </main>
 
-<!-- サイドバーの伸縮操作 -->
+<!-- プロパティ欄の開閉 -->
+
+<script>
+(() => {
+  const editor = document.querySelector(".editor");
+  const properties = document.querySelector(".properties");
+  const button = document.querySelector("#togglePropertiesButton");
+
+  if (!editor || !properties || !button) return;
+
+  button.addEventListener("click", () => {
+    const collapsed = properties.classList.toggle("collapsed");
+
+    editor.classList.toggle("properties-collapsed", collapsed);
+
+    button.textContent = collapsed
+      ? "▴ 開く"
+      : "▾ 仕舞う";
+
+    button.setAttribute(
+      "aria-expanded",
+      String(!collapsed)
+    );
+
+    window.dispatchEvent(new Event("resize"));
+  });
+})();
+</script>
+
+<!-- 左サイドバーの幅調整 -->
+
 <script>
 (() => {
   const editor = document.querySelector(".editor");
@@ -660,9 +851,7 @@
 
   resizer.addEventListener("pointerdown", event => {
     resizing = true;
-
     resizer.setPointerCapture(event.pointerId);
-
     event.preventDefault();
   });
 
@@ -696,6 +885,7 @@
     if (resizing) return;
 
     const limits = getLimits();
+
     const current = parseFloat(
       getComputedStyle(editor).getPropertyValue("--sidebar-width")
     );
@@ -710,31 +900,42 @@
 })();
 </script>
 
+<!-- エラー表示 -->
 
 <script>
 window.addEventListener("error", event => {
   const message = document.createElement("pre");
+
   message.style.cssText =
     "position:fixed;z-index:9999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
+
   message.textContent =
     "JavaScript Error:\n" +
     (event.message || "不明なエラー") +
-    "\n" + (event.filename || "") +
-    ":" + (event.lineno || "");
+    "\n" +
+    (event.filename || "") +
+    ":" +
+    (event.lineno || "");
+
   document.body.appendChild(message);
 });
 
 window.addEventListener("unhandledrejection", event => {
   const message = document.createElement("pre");
+
   message.style.cssText =
     "position:fixed;z-index:9999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
+
   message.textContent =
     "Promise Error:\n" + String(event.reason);
+
   document.body.appendChild(message);
 });
 </script>
 
-  
-<script type="module" src="./main.js?v=8"></script>
+<!-- 3Dエディター本体 -->
+
+<script type="module" src="./main.js?v=9"></script>
+
 </body>
 </html>
