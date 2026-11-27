@@ -202,7 +202,31 @@ export function createHierarchyView(
         }
       });
 
-      row.append(toggle, button, renameButton);
+      
+      // グループ表示・非表示ボタン
+      const visibilityButton = document.createElement("button");
+      visibilityButton.className = "hierarchy-toggle";
+      visibilityButton.textContent =
+        objectGroup.isGroupVisible(group) ? "👁" : "🙈";
+      visibilityButton.title = "グループの表示・非表示";
+
+      visibilityButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        objectGroup.toggleGroupVisibility(group);
+
+        visibilityButton.textContent =
+          objectGroup.isGroupVisible(group) ? "👁" : "🙈";
+      });
+
+      row.append(
+        toggle,
+        button,
+        renameButton,
+        visibilityButton
+      );
+
       wrapper.appendChild(row);
 
       if (hasChildren && !collapsedObjects.has(group)) {
