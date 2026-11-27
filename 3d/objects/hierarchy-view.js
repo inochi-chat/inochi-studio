@@ -228,15 +228,22 @@ export function createHierarchyView(
         objectGroup.isGroupLocked(group) ? "🔒" : "🔓";
       lockButton.title = "グループのロック・解除";
 
-      lockButton.addEventListener("click", event => {
-        event.preventDefault();
-        event.stopPropagation();
+      
+lockButton.addEventListener("click", event => {
+  event.preventDefault();
+  event.stopPropagation();
 
-        objectGroup.toggleGroupLock(group);
+  objectGroup.toggleGroupLock(group);
 
-        lockButton.textContent =
-          objectGroup.isGroupLocked(group) ? "🔒" : "🔓";
-      });
+  lockButton.textContent =
+    objectGroup.isGroupLocked(group) ? "🔒" : "🔓";
+
+  // ロック状態を変形ツールに反映
+  if (onSelectGroup) {
+    onSelectGroup(group);
+  }
+});
+
 
       row.append(
         toggle,
