@@ -71,6 +71,7 @@ import { createMeshPicker } from "./tools/mesh-picker.js";
 import { createMeshEditCommands } from "./tools/mesh-edit-commands.js";
 import { createMeshHistory } from "./tools/mesh-history.js";
 import { createMeshToolbar } from "./tools/mesh-toolbar.js";
+import { createMeshGizmo } from "./tools/mesh-gizmo.js";
 
 
 // =====================================================
@@ -233,6 +234,7 @@ const meshOperations = createMeshOperations(meshEditor);
 let meshTopology = null;
 let meshVisuals = null;
 let meshPicker = null;
+let meshGizmo = null;
 let meshHistory = null;
 let meshEditCommands = null;
 let activeMesh = null;
@@ -247,9 +249,11 @@ function rebuildMeshTools() {
 
   meshPicker?.dispose();
   meshVisuals?.dispose();
+  meshGizmo?.dispose();
 
   meshPicker = null;
   meshVisuals = null;
+  meshGizmo = null;
 
   meshTopology = createMeshTopology(activeMesh);
 
@@ -258,7 +262,15 @@ function rebuildMeshTools() {
     topology: meshTopology
   });
 
-  
+  // XYZ移動ギズモを作成
+  meshGizmo = createMeshGizmo({
+    scene,
+    camera,
+    renderer,
+    mesh: activeMesh,
+    topology: meshTopology
+  });
+
   meshPicker = createMeshPicker({
     camera,
     renderer,
@@ -270,7 +282,6 @@ function rebuildMeshTools() {
 
     onSelectionChange(selection) {
       // 頂点・辺・面の選択を頂点選択へ変換
-      // これにより辺・面の操作にも頂点変形を利用できる
       const vertexIds = new Set();
 
       for (const id of selection.vertices) {
@@ -298,6 +309,9 @@ function rebuildMeshTools() {
       }
 
       meshEditor.setSelectedVertices([...vertexIds]);
+
+      // 選択範囲の中心にギズモを表示
+      meshGizmo?.update([...vertexIds]);
     }
   });
 
@@ -306,6 +320,9 @@ function rebuildMeshTools() {
 
   meshEditor.refreshVertexPositions();
   meshEditor.clearSelection();
+
+  // 選択解除後はギズモも非表示
+  meshGizmo?.update([]);
 }
 
 
@@ -319,10 +336,12 @@ function exitMeshEditMode() {
 
   meshPicker?.dispose();
   meshVisuals?.dispose();
+  meshGizmo?.dispose();
   meshHistory?.dispose();
 
   meshPicker = null;
   meshVisuals = null;
+  meshGizmo = null;
   meshTopology = null;
   meshHistory = null;
   meshEditCommands = null;
@@ -461,7 +480,6 @@ function askVector(title, defaultValue) {
 function runMeshAction(action) {
   if (!meshEditing || !meshPicker || !meshHistory) return;
 
-  
   // 数値入力パネルからの変形
   if (action.startsWith("transform:")) {
     const [, transformMode, rawValues] = action.split(":");
@@ -510,7 +528,6 @@ function runMeshAction(action) {
     return;
   }
 
-  
   const selection = meshPicker.getSelection();
 
   if (action === "clear") {
@@ -704,7 +721,6 @@ function refreshProperties() {
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
-  
   if (true) {
     const meshEditButton = document.createElement("button");
 
@@ -725,7 +741,6 @@ function refreshProperties() {
     inner.appendChild(meshEditButton);
   }
 
-  
   inner.appendChild(createNameEditor(object, refreshEditorUI));
   inner.appendChild(createPositionEditor(object, refreshEditorUI));
   inner.appendChild(createRotationEditor(object));
@@ -1175,7 +1190,9 @@ function ungroupSelectedObject() {
     }
   );
 
-  history.execute(command);
+  if (command) {
+    history.execute(command);
+  }
 }
 
 
