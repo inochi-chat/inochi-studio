@@ -1,4 +1,4 @@
-
+import * as THREE from "three";
 export function createMeshHistory({
   mesh,
   maxHistory = 50,
