@@ -461,6 +461,56 @@ function askVector(title, defaultValue) {
 function runMeshAction(action) {
   if (!meshEditing || !meshPicker || !meshHistory) return;
 
+  
+  // 数値入力パネルからの変形
+  if (action.startsWith("transform:")) {
+    const [, transformMode, rawValues] = action.split(":");
+
+    const values = rawValues.split(",").map(Number);
+
+    if (
+      values.length !== 3 ||
+      values.some(value => !Number.isFinite(value))
+    ) {
+      alert("変形数値が正しくありません。");
+      return;
+    }
+
+    if (meshEditor.getSelectedVertices().length === 0) {
+      alert("変形する頂点を選択してください。");
+      return;
+    }
+
+    meshHistory.save();
+
+    let success = false;
+
+    if (transformMode === "move") {
+      success = meshOperations.move(...values);
+    }
+
+    if (transformMode === "rotate") {
+      const radians = values.map(
+        value => value * Math.PI / 180
+      );
+
+      success = meshOperations.rotate(...radians);
+    }
+
+    if (transformMode === "scale") {
+      success = meshOperations.scale(...values);
+    }
+
+    if (success) {
+      rebuildMeshTools();
+    } else {
+      meshHistory.undo();
+    }
+
+    return;
+  }
+
+  
   const selection = meshPicker.getSelection();
 
   if (action === "clear") {
