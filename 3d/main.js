@@ -441,10 +441,17 @@ function groupSelectedObjects() {
   history.execute(command);
 }
 
+
 // グループ解除
 function ungroupSelectedObject() {
   if (!activeGroup || !objectGroup.isGroup(activeGroup)) {
     alert("グループを選択してください。");
+    return;
+  }
+
+  // グループがロックされているか確認
+  if (objectGroup.isGroupLocked(activeGroup)) {
+    alert("ロック中のグループは解除できません。先にロックを解除してください。");
     return;
   }
 
@@ -469,7 +476,6 @@ function ungroupSelectedObject() {
 
   history.execute(command);
 }
-
 
 // グループ化・グループ解除ボタン
 document
