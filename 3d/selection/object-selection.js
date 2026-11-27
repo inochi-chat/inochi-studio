@@ -16,13 +16,10 @@ export function createObjectSelection({
   const pointer = new THREE.Vector2();
 
   function selectAtPointer(event) {
-    // 通常選択が無効なら何もしない
     if (!isEnabled()) return;
-
     if (transform.dragging) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
-
     if (!rect.width || !rect.height) return;
 
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -41,9 +38,7 @@ export function createObjectSelection({
     const object = selectedHit?.object ?? null;
 
     if (multiSelectionMode?.isEnabled()) {
-      if (object) {
-        multiSelectionController.toggle(object);
-      }
+      if (object) multiSelectionController.toggle(object);
       return;
     }
 
@@ -55,17 +50,11 @@ export function createObjectSelection({
     onSelect(object);
   }
 
-  renderer.domElement.addEventListener(
-    "pointerdown",
-    selectAtPointer
-  );
+  renderer.domElement.addEventListener("pointerdown", selectAtPointer);
 
   return {
     dispose() {
-      renderer.domElement.removeEventListener(
-        "pointerdown",
-        selectAtPointer
-      );
+      renderer.domElement.removeEventListener("pointerdown", selectAtPointer);
     }
   };
 }
