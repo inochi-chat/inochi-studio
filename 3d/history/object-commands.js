@@ -1,89 +1,92 @@
 
-export function createGroupCommand(objectGroup, selectedObjects, onChange) {
-  let group = null;
+function copyObjectProperties(source, target) {
+  target.name = `${source.name}_Copy`;
 
-  return {
-    undo() {
-      if (!group) return;
+  target.position.copy(source.position);
+  target.rotation.copy(source.rotation);
+  target.scale.copy(source.scale);
 
-      objectGroup.ungroup(group);
+  target.visible = source.visible;
 
-      if (onChange) onChange(null);
-    },
+  if (Array.isArray(source.material)) {
+    target.material = source.material.map(
+      material => material.clone()
+    );
+  } else if (source.material) {
+    target.material = source.material.clone();
+  }
 
-    redo() {
-      group = objectGroup.createGroup(selectedObjects);
-
-      if (onChange) onChange(group);
-    }
-  };
+  return target;
 }
 
-export function createUngroupCommand(objectGroup, targetGroup, onChange) {
-  const objects = objectGroup.getGroupObjects(targetGroup);
-  let group = targetGroup;
-
-  return {
-    undo() {
-      group = objectGroup.createGroup(objects);
-
-      if (onChange) onChange(group);
-    },
-
-    redo() {
-      if (!group) return;
-
-      objectGroup.ungroup(group);
-
-      if (onChange) onChange(null);
-    }
-  };
-}
-
-export function createRenameGroupCommand(group, newName, onChange) {
-  const oldName = group.name;
-
-  return {
-    undo() {
-      group.name = oldName;
-
-      if (onChange) onChange(group);
-    },
-
-    redo() {
-      group.name = newName;
-
-      if (onChange) onChange(group);
-    }
-  };
-}
-
-// グループと中のオブジェクトをまとめて削除する
-export function createDeleteGroupCommand(
-  objectGroup,
+export function createAddObjectCommand(
   objectManager,
-  targetGroup,
+  geometry,
+  type,
   onChange
 ) {
-  const children = objectGroup.getGroupObjects(targetGroup);
+  let object = null;
+  let index = -1;
 
-  const targets = children
+  return {
+    undo() {
+      if (!object) return;
+
+      index = objectManager.getIndex(object);
+      objectManager.detach(object);
+
+      if (onChange) onChange(null);
+    },
+
+    redo() {
+      if (!object) {
+        object = objectManager.add(geometry, type);
+      } else {
+        objectManager.restore(object, index);
+      }
+
+      if (onChange) onChange(object);
+    }
+  };
+}
+
+export function createDeleteObjectCommand(
+  objectManager,
+  object,
+  onChange
+) {
+  let index = objectManager.getIndex(object);
+
+  return {
+    undo() {
+      objectManager.restore(object, index);
+
+      if (onChange) onChange(object);
+    },
+
+    redo() {
+      index = objectManager.getIndex(object);
+      objectManager.detach(object);
+
+      if (onChange) onChange(null);
+    }
+  };
+}
+
+export function createDeleteObjectsCommand(
+  objectManager,
+  selectedObjects,
+  onChange
+) {
+  const targets = selectedObjects
     .map(object => ({
       object,
       index: objectManager.getIndex(object)
     }))
     .filter(item => item.index !== -1);
 
-  let deleted = false;
-
   return {
     undo() {
-      if (!deleted) return;
-
-      // 先にグループを復元
-      if (!objectGroup.restoreGroup(targetGroup)) return;
-
-      // 子オブジェクトを元の順番で復元
       const sorted = [...targets].sort(
         (a, b) => a.index - b.index
       );
@@ -95,15 +98,12 @@ export function createDeleteGroupCommand(
         );
       }
 
-      deleted = false;
-
-      if (onChange) onChange(targetGroup);
+      if (onChange) {
+        onChange(sorted[0]?.object ?? null);
+      }
     },
 
     redo() {
-      if (deleted) return;
-
-      // 子オブジェクトを先に退避
       const sorted = [...targets].sort(
         (a, b) => b.index - a.index
       );
@@ -112,26 +112,122 @@ export function createDeleteGroupCommand(
         objectManager.detach(item.object);
       }
 
-      // 最後にグループを削除
-      if (!objectGroup.deleteGroup(targetGroup)) {
-        // 失敗した場合は子を戻す
-        const restoreTargets = [...targets].sort(
+      if (onChange) onChange(null);
+    }
+  };
+}
+
+export function createDuplicateObjectCommand(
+  objectManager,
+  sourceObject,
+  onChange
+) {
+  let duplicate = null;
+  let index = -1;
+
+  return {
+    undo() {
+      if (!duplicate) return;
+
+      index = objectManager.getIndex(duplicate);
+      objectManager.detach(duplicate);
+
+      if (onChange) onChange(null);
+    },
+
+    redo() {
+      if (!duplicate) {
+        duplicate = objectManager.add(
+          sourceObject.geometry.clone(),
+          sourceObject.name
+        );
+
+        if (!duplicate) return;
+
+        copyObjectProperties(
+          sourceObject,
+          duplicate
+        );
+
+        duplicate.position.x += 1;
+        index = objectManager.getIndex(duplicate);
+      } else {
+        objectManager.restore(
+          duplicate,
+          index
+        );
+      }
+
+      if (onChange) onChange(duplicate);
+    }
+  };
+}
+
+export function createDuplicateObjectsCommand(
+  objectManager,
+  selectedObjects,
+  onChange
+) {
+  const targets = selectedObjects.filter(
+    object => objectManager.getIndex(object) !== -1
+  );
+
+  const duplicates = [];
+
+  return {
+    undo() {
+      const sorted = [...duplicates].sort(
+        (a, b) => b.index - a.index
+      );
+
+      for (const item of sorted) {
+        item.index = objectManager.getIndex(item.object);
+        objectManager.detach(item.object);
+      }
+
+      if (onChange) onChange(null);
+    },
+
+    redo() {
+      if (duplicates.length === 0) {
+        for (const source of targets) {
+          const duplicate = objectManager.add(
+            source.geometry.clone(),
+            source.name
+          );
+
+          if (!duplicate) continue;
+
+          copyObjectProperties(
+            source,
+            duplicate
+          );
+
+          duplicate.position.x += 1;
+
+          duplicates.push({
+            object: duplicate,
+            index: objectManager.getIndex(duplicate)
+          });
+        }
+      } else {
+        const sorted = [...duplicates].sort(
           (a, b) => a.index - b.index
         );
 
-        for (const item of restoreTargets) {
+        for (const item of sorted) {
           objectManager.restore(
             item.object,
             item.index
           );
         }
-
-        return;
       }
 
-      deleted = true;
-
-      if (onChange) onChange(null);
+      if (onChange) {
+        onChange(duplicates[0]?.object ?? null);
+      }
     }
   };
 }
+
+export const deleteObjectsTest = true;
