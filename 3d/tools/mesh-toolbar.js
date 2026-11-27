@@ -1,20 +1,15 @@
 
 export function createMeshToolbar({
   container,
-  onModeChange = () => {},
-  onMultiSelectChange = () => {},
-  onAction = () => {}
+  onModeChange,
+  onMultiSelectChange,
+  onAction
 }) {
   if (!container) {
-    throw new Error("メッシュツールバーの表示先がありません。");
+    throw new Error("Mesh toolbar container not found");
   }
 
-  let selectionMode = "vertex";
-  let multiSelect = false;
-  let editing = true;
-
   const style = document.createElement("style");
-
   style.textContent = `
     .mesh-toolbar {
       display: flex;
@@ -24,71 +19,90 @@ export function createMeshToolbar({
       padding: 12px;
       box-sizing: border-box;
       background: #20232b;
-      color: white;
-      border-radius: 14px;
+      color: #f4f5f7;
+      border: 1px solid #414653;
+      border-radius: 12px;
       font-family: sans-serif;
     }
 
+    .mesh-toolbar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mesh-toolbar-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #aeb7c8;
+      letter-spacing: .05em;
+    }
+
     .mesh-toolbar-row {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
     }
 
     .mesh-toolbar button {
-      min-width: 0;
-      min-height: 48px;
-      padding: 6px 3px;
-      border: 1px solid #454b59;
-      border-radius: 10px;
-      background: #303541;
-      color: white;
+      min-height: 44px;
+      min-width: 58px;
+      padding: 9px 12px;
+      border: 1px solid #50596b;
+      border-radius: 8px;
+      background: #303642;
+      color: #f4f5f7;
       font-size: 13px;
       font-weight: 600;
-      touch-action: manipulation;
       cursor: pointer;
+      touch-action: manipulation;
     }
 
-    .mesh-toolbar button:active:not(:disabled) {
-      transform: scale(0.96);
+    .mesh-toolbar button:active {
+      transform: scale(.97);
     }
 
     .mesh-toolbar button.active {
-      background: #5865d9;
-      border-color: #8b95ff;
-    }
-
-    .mesh-toolbar button.danger {
-      background: #703b49;
+      background: #2866d8;
+      border-color: #78a6ff;
+      color: white;
     }
 
     .mesh-toolbar button:disabled {
-      opacity: 0.4;
+      opacity: .35;
       cursor: not-allowed;
     }
 
-    .mesh-toolbar-label {
-      font-size: 12px;
-      color: #b8bdca;
-      font-weight: bold;
+    .mesh-toolbar button.danger {
+      background: #592f38;
+      border-color: #9b4d5c;
+    }
+
+    .mesh-toolbar button.primary {
+      background: #245b9e;
+      border-color: #548bd0;
+    }
+
+    .mesh-toolbar-divider {
+      height: 1px;
+      background: #414653;
+      width: 100%;
     }
 
     .mesh-toolbar-status {
       font-size: 12px;
-      color: #aeb8ff;
+      color: #aeb7c8;
     }
 
-    @media (max-width: 420px) {
+    @media (max-width: 600px) {
       .mesh-toolbar {
         padding: 9px;
         gap: 8px;
       }
 
-      .mesh-toolbar-row {
-        gap: 6px;
-      }
-
       .mesh-toolbar button {
+        flex: 1 1 auto;
+        min-width: 70px;
         min-height: 46px;
         font-size: 12px;
       }
@@ -100,197 +114,238 @@ export function createMeshToolbar({
   const root = document.createElement("div");
   root.className = "mesh-toolbar";
 
-  root.innerHTML = `
-    <div class="mesh-toolbar-status" data-status>
-      Edit Mode
-    </div>
+  const sections = {};
 
-    <div class="mesh-toolbar-label">選択モード</div>
+  function createSection(title) {
+    const section = document.createElement("div");
+    section.className = "mesh-toolbar-section";
 
-    <div class="mesh-toolbar-row">
-      <button type="button" data-mode="vertex" class="active">
-        頂点
-      </button>
+    const heading = document.createElement("div");
+    heading.className = "mesh-toolbar-title";
+    heading.textContent = title;
 
-      <button type="button" data-mode="edge">
-        辺
-      </button>
+    const row = document.createElement("div");
+    row.className = "mesh-toolbar-row";
 
-      <button type="button" data-mode="face">
-        面
-      </button>
+    section.append(heading, row);
+    root.appendChild(section);
 
-      <button type="button" data-action="multi">
-        複数選択
-      </button>
-    </div>
+    return row;
+  }
 
-    <div class="mesh-toolbar-label">メッシュ編集</div>
+  function createButton(parent, label, action, options = {}) {
+    const button = document.createElement("button");
 
-    <div class="mesh-toolbar-row">
-      <button type="button" data-action="addVertex" disabled>
-        頂点追加
-      </button>
+    button.type = "button";
+    button.textContent = label;
+    button.title = options.title || label;
 
-      <button type="button" data-action="subdivide">
-        分割
-      </button>
+    if (options.className) {
+      button.classList.add(options.className);
+    }
 
-      <button type="button" data-action="extrude">
-        押し出し
-      </button>
+    if (options.disabled) {
+      button.disabled = true;
+    }
 
-      <button type="button" data-action="delete" class="danger">
-        削除
-      </button>
-    </div>
+    button.addEventListener("click", () => {
+      if (button.disabled) return;
 
-    <div class="mesh-toolbar-label">操作</div>
-
-    <div class="mesh-toolbar-row">
-      <button type="button" data-action="move">
-        移動
-      </button>
-
-      <button type="button" data-action="rotate">
-        回転
-      </button>
-
-      <button type="button" data-action="scale">
-        拡大縮小
-      </button>
-
-      <button type="button" data-action="clear">
-        選択解除
-      </button>
-    </div>
-
-    <div class="mesh-toolbar-row">
-      <button type="button" data-action="undo">
-        ↶ 戻す
-      </button>
-
-      <button type="button" data-action="redo">
-        ↷ やり直す
-      </button>
-
-      <button type="button" data-action="editMode">
-        編集終了
-      </button>
-
-      <button type="button" data-action="objectMode">
-        オブジェクト
-      </button>
-    </div>
-  `;
-
-  container.appendChild(root);
-
-  const status = root.querySelector("[data-status]");
-
-  function updateModeButtons() {
-    root.querySelectorAll("[data-mode]").forEach(button => {
-      button.classList.toggle(
-        "active",
-        button.dataset.mode === selectionMode
-      );
+      if (options.callback) {
+        options.callback();
+      } else {
+        onAction?.(action);
+      }
     });
+
+    parent.appendChild(button);
+
+    return button;
   }
 
-  function updateMultiButton() {
-    const button = root.querySelector('[data-action="multi"]');
+  // 選択モード
+  sections.modes = createSection("選択モード");
 
-    button.classList.toggle("active", multiSelect);
-    button.setAttribute("aria-pressed", String(multiSelect));
-  }
+  const modeButtons = {};
+
+  modeButtons.vertex = createButton(
+    sections.modes,
+    "◆ Vertex",
+    null,
+    {
+      callback: () => setMode("vertex")
+    }
+  );
+
+  modeButtons.edge = createButton(
+    sections.modes,
+    "━ Edge",
+    null,
+    {
+      callback: () => setMode("edge")
+    }
+  );
+
+  modeButtons.face = createButton(
+    sections.modes,
+    "▰ Face",
+    null,
+    {
+      callback: () => setMode("face")
+    }
+  );
+
+  // 複数選択
+  sections.selection = createSection("選択設定");
+
+  const multiButton = createButton(
+    sections.selection,
+    "複数選択：OFF",
+    null,
+    {
+      callback: () => {
+        setMultiSelect(!multiSelect);
+      }
+    }
+  );
+
+  let multiSelect = false;
+
+  // 変形操作
+  sections.transform = createSection("変形");
+
+  createButton(sections.transform, "↔ 移動", "move");
+  createButton(sections.transform, "⟳ 回転", "rotate");
+  createButton(sections.transform, "⤢ 拡大・縮小", "scale");
+
+  // メッシュ編集
+  sections.edit = createSection("メッシュ編集");
+
+  createButton(
+    sections.edit,
+    "✂ 分割",
+    "subdivide",
+    { className: "primary" }
+  );
+
+  createButton(
+    sections.edit,
+    "⬆ 押し出し",
+    "extrude",
+    { className: "primary" }
+  );
+
+  createButton(
+    sections.edit,
+    "＋ 頂点追加",
+    "addVertex",
+    { disabled: true }
+  );
+
+  createButton(
+    sections.edit,
+    "⌫ 削除",
+    "delete",
+    { className: "danger" }
+  );
+
+  // 選択・履歴
+  sections.utility = createSection("その他");
+
+  createButton(sections.utility, "選択解除", "clear");
+  createButton(sections.utility, "↶ 元に戻す", "undo");
+  createButton(sections.utility, "↷ やり直す", "redo");
+
+  const divider = document.createElement("div");
+  divider.className = "mesh-toolbar-divider";
+  root.appendChild(divider);
+
+  // モード切り替え
+  sections.modeControl = createSection("編集モード");
+
+  const editModeButton = createButton(
+    sections.modeControl,
+    "メッシュ編集",
+    "editMode",
+    { className: "primary" }
+  );
+
+  const objectModeButton = createButton(
+    sections.modeControl,
+    "オブジェクトモードに戻る",
+    "objectMode"
+  );
+
+  const status = document.createElement("div");
+  status.className = "mesh-toolbar-status";
+  status.textContent = "Vertex / Edge / Face から選択してね";
+  root.appendChild(status);
+
+  container.replaceChildren(root);
+
+  let currentMode = "vertex";
+  let editing = true;
 
   function setMode(mode) {
-    if (!["vertex", "edge", "face"].includes(mode)) return;
+    if (!["vertex", "edge", "face"].includes(mode)) {
+      return;
+    }
 
-    selectionMode = mode;
-    updateModeButtons();
+    currentMode = mode;
+
+    for (const [key, button] of Object.entries(modeButtons)) {
+      button.classList.toggle("active", key === mode);
+      button.setAttribute(
+        "aria-pressed",
+        String(key === mode)
+      );
+    }
+
+    status.textContent = `${mode.toUpperCase()} モード`;
+
+    onModeChange?.(mode);
   }
 
-  function setMultiSelect(enabled) {
-    multiSelect = Boolean(enabled);
-    updateMultiButton();
+  function setMultiSelect(value) {
+    multiSelect = Boolean(value);
+
+    multiButton.textContent = multiSelect
+      ? "複数選択：ON"
+      : "複数選択：OFF";
+
+    multiButton.classList.toggle("active", multiSelect);
+    multiButton.setAttribute(
+      "aria-pressed",
+      String(multiSelect)
+    );
+
+    onMultiSelectChange?.(multiSelect);
   }
 
-  function setEditing(enabled) {
-    editing = Boolean(enabled);
+  function setEditing(value) {
+    editing = Boolean(value);
+
+    editModeButton.classList.toggle("active", editing);
 
     status.textContent = editing
-      ? "Edit Mode"
-      : "Object Mode";
-
-    root.querySelectorAll("button").forEach(button => {
-      const action = button.dataset.action;
-
-      if (action === "editMode") {
-        button.disabled = !editing;
-      }
-
-      if (action === "objectMode") {
-        button.disabled = editing;
-      }
-
-      if (button.dataset.mode || action === "multi") {
-        button.disabled = !editing;
-      }
-    });
+      ? `${currentMode.toUpperCase()} モードで編集中`
+      : "オブジェクトモード";
   }
 
-  root.addEventListener("click", event => {
-    const button = event.target.closest("button");
-
-    if (!button || !root.contains(button) || button.disabled) {
-      return;
-    }
-
-    const mode = button.dataset.mode;
-    const action = button.dataset.action;
-
-    if (mode) {
-      selectionMode = mode;
-      updateModeButtons();
-      onModeChange(selectionMode);
-      return;
-    }
-
-    if (action === "multi") {
-      setMultiSelect(!multiSelect);
-      onMultiSelectChange(multiSelect);
-      return;
-    }
-
-    if (action === "editMode") {
-      onAction(action);
-      return;
-    }
-
-    if (action === "objectMode") {
-      onAction(action);
-      return;
-    }
-
-    if (action) {
-      onAction(action);
-    }
-  });
-
-  setEditing(true);
-  updateMultiButton();
-
-  function dispose() {
-    root.remove();
-    style.remove();
-  }
+  setMode("vertex");
 
   return {
     element: root,
+
     setMode,
+
     setMultiSelect,
+
     setEditing,
-    dispose
+
+    dispose() {
+      root.remove();
+      style.remove();
+    }
   };
 }
