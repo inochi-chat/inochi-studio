@@ -42,9 +42,12 @@ export function createMeshOperations(meshEditor) {
     }
 
     attribute.needsUpdate = true;
+
     context.mesh.geometry.computeVertexNormals();
     context.mesh.geometry.computeBoundingBox();
     context.mesh.geometry.computeBoundingSphere();
+
+    meshEditor.refreshVertexPositions();
 
     return true;
   }
@@ -56,32 +59,30 @@ export function createMeshOperations(meshEditor) {
       return false;
     }
 
-    const { position, selected } = context;
+    const { mesh, position, selected } = context;
 
     for (const vertex of selected) {
-      const index = vertex.sourceIndex;
-
-      const current = new THREE.Vector3(
-        position.getX(index),
-        position.getY(index),
-        position.getZ(index)
-      );
+      const current = vertex.position.clone();
 
       transform(current, vertex);
 
-      position.setXYZ(
-        index,
-        current.x,
-        current.y,
-        current.z
-      );
+      for (const index of vertex.sourceIndices) {
+        position.setXYZ(
+          index,
+          current.x,
+          current.y,
+          current.z
+        );
+      }
     }
 
     position.needsUpdate = true;
 
-    context.mesh.geometry.computeVertexNormals();
-    context.mesh.geometry.computeBoundingBox();
-    context.mesh.geometry.computeBoundingSphere();
+    mesh.geometry.computeVertexNormals();
+    mesh.geometry.computeBoundingBox();
+    mesh.geometry.computeBoundingSphere();
+
+    meshEditor.refreshVertexPositions();
 
     return true;
   }
@@ -94,6 +95,16 @@ export function createMeshOperations(meshEditor) {
     });
   }
 
+  function getSelectionCenter(selected) {
+    const center = new THREE.Vector3();
+
+    for (const vertex of selected) {
+      center.add(vertex.position);
+    }
+
+    return center.divideScalar(selected.length);
+  }
+
   function scale(x = 1, y = 1, z = 1) {
     const context = getContext();
 
@@ -101,19 +112,15 @@ export function createMeshOperations(meshEditor) {
       return false;
     }
 
-    const center = new THREE.Vector3();
-
-    for (const vertex of context.selected) {
-      center.add(vertex.position);
-    }
-
-    center.divideScalar(context.selected.length);
+    const center = getSelectionCenter(context.selected);
 
     return applyToSelected(vertex => {
       vertex.sub(center);
-      vertex.x *= x;
-      vertex.y *= y;
-      vertex.z *= z;
+      vertex.set(
+        vertex.x * x,
+        vertex.y * y,
+        vertex.z * z
+      );
       vertex.add(center);
     });
   }
@@ -125,17 +132,10 @@ export function createMeshOperations(meshEditor) {
       return false;
     }
 
-    const center = new THREE.Vector3();
+    const center = getSelectionCenter(context.selected);
 
-    for (const vertex of context.selected) {
-      center.add(vertex.position);
-    }
-
-    center.divideScalar(context.selected.length);
-
-    const rotation = new THREE.Euler(x, y, z, "XYZ");
     const quaternion = new THREE.Quaternion()
-      .setFromEuler(rotation);
+      .setFromEuler(new THREE.Euler(x, y, z, "XYZ"));
 
     return applyToSelected(vertex => {
       vertex.sub(center);
