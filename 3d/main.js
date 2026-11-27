@@ -258,9 +258,11 @@ function rebuildMeshTools() {
     topology: meshTopology
   });
 
+  
   meshPicker = createMeshPicker({
     camera,
     renderer,
+    orbitControls: orbit,
     mesh: activeMesh,
     topology: meshTopology,
     visuals: meshVisuals,
