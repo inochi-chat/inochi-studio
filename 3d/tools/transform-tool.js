@@ -7,7 +7,8 @@ export function createTransformTool(
   renderer,
   scene,
   orbit,
-  objectLock
+  objectLock,
+  objectGroup
 ) {
   const transform = new TransformControls(
     camera,
@@ -22,6 +23,23 @@ export function createTransformTool(
   transform.addEventListener("dragging-changed", event => {
     orbit.enabled = !event.value;
   });
+
+  function isLocked(object) {
+    if (!object) return false;
+
+    if (objectLock?.isLocked(object)) {
+      return true;
+    }
+
+    if (
+      objectGroup?.isGroup(object) &&
+      objectGroup.isGroupLocked(object)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
 
   // 複数選択グループを解除
   function clearMultiGroup() {
@@ -47,12 +65,7 @@ export function createTransformTool(
   function attach(object) {
     clearMultiGroup();
 
-    if (!object) {
-      transform.detach();
-      return;
-    }
-
-    if (objectLock?.isLocked(object)) {
+    if (!object || isLocked(object)) {
       transform.detach();
       return;
     }
@@ -66,12 +79,11 @@ export function createTransformTool(
     transform.detach();
 
     const selected = objects.filter(object =>
-      object && !objectLock?.isLocked(object)
+      object && !isLocked(object)
     );
 
     if (selected.length === 0) return;
 
-    // 選択中の親がある場合、その子は別々にまとめない
     const selectedSet = new Set(selected);
 
     const topLevelObjects = selected.filter(object => {
