@@ -3,6 +3,8 @@ import * as THREE from "three";
 
 export function createObjectGroup(scene, objectManager) {
   const groups = new Map();
+  const groupVisibility = new Map();
+
   let groupCounter = 0;
 
   function isManaged(object) {
@@ -45,6 +47,7 @@ export function createObjectGroup(scene, objectManager) {
     }
 
     groups.set(group, [...targets]);
+    groupVisibility.set(group, true);
 
     return group;
   }
@@ -60,6 +63,7 @@ export function createObjectGroup(scene, objectManager) {
 
     scene.remove(group);
     groups.delete(group);
+    groupVisibility.delete(group);
 
     return true;
   }
@@ -78,11 +82,42 @@ export function createObjectGroup(scene, objectManager) {
     return [...groups.keys()];
   }
 
+  // グループの表示・非表示
+  function setGroupVisible(group, visible) {
+    if (!groups.has(group)) return false;
+
+    const isVisible = Boolean(visible);
+
+    group.visible = isVisible;
+    groupVisibility.set(group, isVisible);
+
+    return true;
+  }
+
+  // 表示状態を取得
+  function isGroupVisible(group) {
+    if (!groups.has(group)) return false;
+
+    return groupVisibility.get(group) ?? true;
+  }
+
+  function toggleGroupVisibility(group) {
+    if (!groups.has(group)) return false;
+
+    return setGroupVisible(
+      group,
+      !isGroupVisible(group)
+    );
+  }
+
   return {
     createGroup,
     ungroup,
     isGroup,
     getGroupObjects,
-    getAllGroups
+    getAllGroups,
+    setGroupVisible,
+    isGroupVisible,
+    toggleGroupVisibility
   };
 }
