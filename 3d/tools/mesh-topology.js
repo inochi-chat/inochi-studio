@@ -15,6 +15,9 @@ export function createMeshTopology(mesh) {
   const vertexLookup = new Map();
   const edgeLookup = new Map();
 
+  const vertexEdges = new Map();
+  const vertexFaces = new Map();
+
   function vertexKey(x, y, z) {
     return `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;
   }
@@ -36,6 +39,9 @@ export function createMeshTopology(mesh) {
         position: { x, y, z },
         sourceIndices: [sourceIndex]
       });
+
+      vertexEdges.set(id, new Set());
+      vertexFaces.set(id, new Set());
     } else {
       const vertex = vertices[vertexLookup.get(key)];
 
@@ -45,6 +51,11 @@ export function createMeshTopology(mesh) {
     }
 
     return vertexLookup.get(key);
+  }
+
+  // 孤立頂点も含めて登録
+  for (let i = 0; i < position.count; i++) {
+    getVertexId(i);
   }
 
   function getEdgeId(a, b) {
@@ -67,9 +78,11 @@ export function createMeshTopology(mesh) {
     return edgeLookup.get(key);
   }
 
-  const triangleCount = index
-    ? index.count / 3
-    : position.count / 3;
+  const elementCount = index
+    ? index.count
+    : position.count;
+
+  const triangleCount = Math.floor(elementCount / 3);
 
   for (let i = 0; i < triangleCount; i++) {
     const sourceIndices = index
@@ -78,12 +91,17 @@ export function createMeshTopology(mesh) {
           index.getX(i * 3 + 1),
           index.getX(i * 3 + 2)
         ]
-      : [i * 3, i * 3 + 1, i * 3 + 2];
+      : [
+          i * 3,
+          i * 3 + 1,
+          i * 3 + 2
+        ];
 
     const vertexIds = sourceIndices.map(getVertexId);
 
     const face = {
       id: faces.length,
+      triangleIndex: i,
       vertices: vertexIds,
       edges: []
     };
@@ -94,14 +112,23 @@ export function createMeshTopology(mesh) {
       [vertexIds[2], vertexIds[0]]
     ];
 
+    for (const vertexId of vertexIds) {
+      vertexFaces.get(vertexId).add(face.id);
+    }
+
     for (const [a, b] of edgePairs) {
       const edgeId = getEdgeId(a, b);
 
       face.edges.push(edgeId);
 
-      if (!edges[edgeId].faces.includes(face.id)) {
-        edges[edgeId].faces.push(face.id);
+      const edge = edges[edgeId];
+
+      if (!edge.faces.includes(face.id)) {
+        edge.faces.push(face.id);
       }
+
+      vertexEdges.get(a).add(edgeId);
+      vertexEdges.get(b).add(edgeId);
     }
 
     faces.push(face);
@@ -120,15 +147,13 @@ export function createMeshTopology(mesh) {
   }
 
   function getConnectedEdges(vertexId) {
-    return edges.filter(edge =>
-      edge.vertices.includes(vertexId)
-    );
+    return [...(vertexEdges.get(vertexId) ?? [])]
+      .map(id => edges[id]);
   }
 
   function getConnectedFaces(vertexId) {
-    return faces.filter(face =>
-      face.vertices.includes(vertexId)
-    );
+    return [...(vertexFaces.get(vertexId) ?? [])]
+      .map(id => faces[id]);
   }
 
   function getAdjacentFaces(edgeId) {
