@@ -16,6 +16,7 @@ export function createMeshPicker({
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
+  const element = renderer.domElement;
 
   let mode = "vertex";
   let multiSelect = false;
@@ -26,12 +27,6 @@ export function createMeshPicker({
     edges: new Set(),
     faces: new Set()
   };
-
-  const element = renderer.domElement;
-
-  // -------------------------
-  // 範囲選択ボックス
-  // -------------------------
 
   const selectionBox = document.createElement("div");
 
@@ -71,15 +66,10 @@ export function createMeshPicker({
     selectionBox.style.display = "none";
   }
 
-  // -------------------------
-  // 選択セット
-  // -------------------------
-
   function getActiveSet() {
     if (mode === "vertex") return selected.vertices;
     if (mode === "edge") return selected.edges;
     if (mode === "face") return selected.faces;
-
     return null;
   }
 
@@ -106,7 +96,6 @@ export function createMeshPicker({
     selected.vertices.clear();
     selected.edges.clear();
     selected.faces.clear();
-
     updateVisuals();
     notifySelection();
   }
@@ -115,6 +104,7 @@ export function createMeshPicker({
     if (id == null) return;
 
     const activeSet = getActiveSet();
+    if (!activeSet) return;
 
     if (!multiSelect) {
       activeSet.clear();
@@ -130,13 +120,8 @@ export function createMeshPicker({
     notifySelection();
   }
 
-  // -------------------------
-  // 座標変換
-  // -------------------------
-
   function getWorldPosition(vertexId) {
     const vertex = topology.getVertex(vertexId);
-
     if (!vertex) return null;
 
     mesh.updateWorldMatrix(true, false);
@@ -152,15 +137,11 @@ export function createMeshPicker({
 
   function getScreenPosition(vertexId) {
     const world = getWorldPosition(vertexId);
-
     if (!world) return null;
 
     const projected = world.clone().project(camera);
 
-    if (
-      projected.z < -1 ||
-      projected.z > 1
-    ) {
+    if (projected.z < -1 || projected.z > 1) {
       return null;
     }
 
@@ -173,7 +154,7 @@ export function createMeshPicker({
   }
 
   function isInside(point, rect) {
-    return (
+    return Boolean(
       point &&
       point.x >= rect.left &&
       point.x <= rect.right &&
@@ -181,10 +162,6 @@ export function createMeshPicker({
       point.y <= rect.bottom
     );
   }
-
-  // -------------------------
-  // 線と範囲の交差判定
-  // -------------------------
 
   function orientation(a, b, c) {
     return (
@@ -212,22 +189,18 @@ export function createMeshPicker({
       return true;
     }
 
-    const topLeft = { x: rect.left, y: rect.top };
-    const topRight = { x: rect.right, y: rect.top };
-    const bottomLeft = { x: rect.left, y: rect.bottom };
-    const bottomRight = { x: rect.right, y: rect.bottom };
+    const tl = { x: rect.left, y: rect.top };
+    const tr = { x: rect.right, y: rect.top };
+    const bl = { x: rect.left, y: rect.bottom };
+    const br = { x: rect.right, y: rect.bottom };
 
     return (
-      segmentsIntersect(a, b, topLeft, topRight) ||
-      segmentsIntersect(a, b, topRight, bottomRight) ||
-      segmentsIntersect(a, b, bottomRight, bottomLeft) ||
-      segmentsIntersect(a, b, bottomLeft, topLeft)
+      segmentsIntersect(a, b, tl, tr) ||
+      segmentsIntersect(a, b, tr, br) ||
+      segmentsIntersect(a, b, br, bl) ||
+      segmentsIntersect(a, b, bl, tl)
     );
   }
-
-  // -------------------------
-  // 三角形と範囲の交差判定
-  // -------------------------
 
   function pointInTriangle(p, a, b, c) {
     const d1 = orientation(p, a, b);
@@ -243,7 +216,6 @@ export function createMeshPicker({
   function triangleIntersectsRect(points, rect) {
     if (points.some(p => !p)) return false;
 
-    // 三角形の頂点が範囲内
     if (points.some(p => isInside(p, rect))) {
       return true;
     }
@@ -253,19 +225,10 @@ export function createMeshPicker({
       y: (rect.top + rect.bottom) / 2
     };
 
-    // 範囲の中心が三角形の内部
-    if (
-      pointInTriangle(
-        center,
-        points[0],
-        points[1],
-        points[2]
-      )
-    ) {
+    if (pointInTriangle(center, points[0], points[1], points[2])) {
       return true;
     }
 
-    // 三角形の辺が範囲と交差
     if (
       segmentIntersectsRect(points[0], points[1], rect) ||
       segmentIntersectsRect(points[1], points[2], rect) ||
@@ -274,7 +237,6 @@ export function createMeshPicker({
       return true;
     }
 
-    // 範囲の四隅が三角形内部にある場合
     const corners = [
       { x: rect.left, y: rect.top },
       { x: rect.right, y: rect.top },
@@ -283,18 +245,9 @@ export function createMeshPicker({
     ];
 
     return corners.some(p =>
-      pointInTriangle(
-        p,
-        points[0],
-        points[1],
-        points[2]
-      )
+      pointInTriangle(p, points[0], points[1], points[2])
     );
   }
-
-  // -------------------------
-  // クリック選択
-  // -------------------------
 
   function findVertex() {
     const candidates = topology.vertices.map(vertex => ({
@@ -319,14 +272,10 @@ export function createMeshPicker({
       new THREE.Float32BufferAttribute(positions, 3)
     );
 
-    const points = new THREE.Points(
-      geometry,
-      new THREE.PointsMaterial({ size: 12 })
-    );
+    const material = new THREE.PointsMaterial({ size: 12 });
+    const points = new THREE.Points(geometry, material);
 
-    const worldPosition = mesh.getWorldPosition(
-      new THREE.Vector3()
-    );
+    const worldPosition = mesh.getWorldPosition(new THREE.Vector3());
 
     raycaster.params.Points.threshold = Math.max(
       0.015,
@@ -336,11 +285,9 @@ export function createMeshPicker({
     const hits = raycaster.intersectObject(points);
 
     geometry.dispose();
-    points.material.dispose();
+    material.dispose();
 
-    return hits.length
-      ? candidates[hits[0].index].id
-      : null;
+    return hits.length ? candidates[hits[0].index].id : null;
   }
 
   function findEdge() {
@@ -367,16 +314,12 @@ export function createMeshPicker({
       const t = lengthSquared === 0
         ? 0
         : THREE.MathUtils.clamp(
-            pointer.clone().sub(a2).dot(segment) /
-              lengthSquared,
+            pointer.clone().sub(a2).dot(segment) / lengthSquared,
             0,
             1
           );
 
-      const closest = a2.clone().add(
-        segment.multiplyScalar(t)
-      );
-
+      const closest = a2.clone().add(segment.multiplyScalar(t));
       const distance = closest.distanceTo(pointer);
 
       if (distance < threshold && distance < bestDistance) {
@@ -396,7 +339,6 @@ export function createMeshPicker({
     }
 
     const face = topology.getFace(hits[0].faceIndex);
-
     return face ? face.id : null;
   }
 
@@ -404,7 +346,6 @@ export function createMeshPicker({
     if (mode === "vertex") return findVertex();
     if (mode === "edge") return findEdge();
     if (mode === "face") return findFace();
-
     return null;
   }
 
@@ -421,15 +362,8 @@ export function createMeshPicker({
     raycaster.setFromCamera(pointer, camera);
 
     const id = findTarget();
-
-    if (id !== null) {
-      select(id);
-    }
+    if (id !== null) select(id);
   }
-
-  // -------------------------
-  // 範囲選択
-  // -------------------------
 
   function selectByRectangle(start, end) {
     const rect = getRect(start, end);
@@ -443,9 +377,7 @@ export function createMeshPicker({
 
     if (mode === "vertex") {
       for (const vertex of topology.vertices) {
-        const point = getScreenPosition(vertex.id);
-
-        if (isInside(point, rect)) {
+        if (isInside(getScreenPosition(vertex.id), rect)) {
           activeSet.add(vertex.id);
         }
       }
@@ -464,9 +396,7 @@ export function createMeshPicker({
 
     if (mode === "face") {
       for (const face of topology.faces) {
-        const points = face.vertices.map(id =>
-          getScreenPosition(id)
-        );
+        const points = face.vertices.map(id => getScreenPosition(id));
 
         if (triangleIntersectsRect(points, rect)) {
           activeSet.add(face.id);
@@ -479,182 +409,141 @@ export function createMeshPicker({
   }
 
   // -------------------------
-  // 操作イベント
+  // Pointer events
   // -------------------------
 
-function handlePointerDown(event) {
-  if (event.button !== undefined && event.button !== 0) {
-    return;
-  }
+  function handlePointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) return;
 
-  const rect = element.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
 
-  if (
-    event.clientX < rect.left ||
-    event.clientX > rect.right ||
-    event.clientY < rect.top ||
-    event.clientY > rect.bottom
-  ) {
-    return;
-  }
-
-  pointerStart = {
-    x: event.clientX,
-    y: event.clientY,
-    pointerId: event.pointerId
-  };
-
-  // OrbitControlsにドラッグを渡さない
-  event.preventDefault();
-  event.stopPropagation();
-
-  if (event.pointerId !== undefined) {
-    element.setPointerCapture(event.pointerId);
-  }
-
-  hideSelectionBox();
-}
-
-  
-function handlePointerMove(event) {
-  if (!pointerStart) return;
-
-  if (
-    pointerStart.pointerId !== undefined &&
-    event.pointerId !== pointerStart.pointerId
-  ) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  updateSelectionBox({
-    x: event.clientX,
-    y: event.clientY
-  });
-}
-
-function handlePointerUp(event) {
-  if (!pointerStart) return;
-
-  if (
-    pointerStart.pointerId !== undefined &&
-    event.pointerId !== pointerStart.pointerId
-  ) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  const start = {
-    x: pointerStart.x,
-    y: pointerStart.y
-  };
-
-  const end = {
-    x: event.clientX,
-    y: event.clientY
-  };
-
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-
-  pointerStart = null;
-  hideSelectionBox();
-
-  // 小さな移動ならクリック選択
-  if (Math.hypot(dx, dy) < 6) {
-    selectAt(end.x, end.y);
-  } else {
-    // ドラッグなら範囲選択
-    selectByRectangle(start, end);
-  }
-}
-
-function handlePointerCancel(event) {
-  if (!pointerStart) return;
-
-  if (
-    pointerStart.pointerId !== undefined &&
-    event.pointerId !== pointerStart.pointerId
-  ) {
-    return;
-  }
-
-  pointerStart = null;
-  hideSelectionBox();
-}
-
-  // -------------------------
-  // モード・複数選択
-  // -------------------------
-
-  function setMode(nextMode) {
-    if (!["vertex", "edge", "face"].includes(nextMode)) {
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    ) {
       return;
     }
 
-    mode = nextMode;
+    pointerStart = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId
+    };
 
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.pointerId !== undefined) {
+      element.setPointerCapture(event.pointerId);
+    }
+
+    hideSelectionBox();
+  }
+
+  function handlePointerMove(event) {
+    if (!pointerStart) return;
+
+    if (
+      pointerStart.pointerId !== undefined &&
+      event.pointerId !== pointerStart.pointerId
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    updateSelectionBox({
+      x: event.clientX,
+      y: event.clientY
+    });
+  }
+
+  function handlePointerUp(event) {
+    if (!pointerStart) return;
+
+    if (
+      pointerStart.pointerId !== undefined &&
+      event.pointerId !== pointerStart.pointerId
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const start = {
+      x: pointerStart.x,
+      y: pointerStart.y
+    };
+
+    const end = {
+      x: event.clientX,
+      y: event.clientY
+    };
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+
+    pointerStart = null;
+    hideSelectionBox();
+
+    if (Math.hypot(dx, dy) < 6) {
+      selectAt(end.x, end.y);
+    } else {
+      selectByRectangle(start, end);
+    }
+  }
+
+  function handlePointerCancel(event) {
+    if (!pointerStart) return;
+
+    if (
+      pointerStart.pointerId !== undefined &&
+      event.pointerId !== pointerStart.pointerId
+    ) {
+      return;
+    }
+
+    pointerStart = null;
+    hideSelectionBox();
+  }
+
+  // -------------------------
+  // Mode and multi-select
+  // -------------------------
+
+  function setMode(nextMode) {
+    if (!["vertex", "edge", "face"].includes(nextMode)) return;
+
+    mode = nextMode;
     clearSelection();
     visuals.setMode(mode);
   }
 
   function setMultiSelect(enabled) {
     multiSelect = Boolean(enabled);
-
     meshEditor?.setMultiSelect(multiSelect);
   }
 
   // -------------------------
-  // イベント登録
+  // Event registration
   // -------------------------
 
-  element.addEventListener(
-    "pointerdown",
-    handlePointerDown,
-    true
-  );
-
-  element.addEventListener(
-    "pointermove",
-    handlePointerMove
-  );
-
-  element.addEventListener(
-    "pointerup",
-    handlePointerUp
-  );
-
-  element.addEventListener(
-    "pointercancel",
-    handlePointerCancel
-  );
+  element.addEventListener("pointerdown", handlePointerDown, true);
+  element.addEventListener("pointermove", handlePointerMove);
+  element.addEventListener("pointerup", handlePointerUp);
+  element.addEventListener("pointercancel", handlePointerCancel);
 
   function dispose() {
-    element.removeEventListener(
-      "pointerdown",
-      handlePointerDown,
-      true
-    );
+    element.removeEventListener("pointerdown", handlePointerDown, true);
+    element.removeEventListener("pointermove", handlePointerMove);
+    element.removeEventListener("pointerup", handlePointerUp);
+    element.removeEventListener("pointercancel", handlePointerCancel);
 
-    element.removeEventListener(
-      "pointermove",
-      handlePointerMove
-    );
-
-    element.removeEventListener(
-      "pointerup",
-      handlePointerUp
-    );
-
-    element.removeEventListener(
-      "pointercancel",
-      handlePointerCancel
-    );
-
+    pointerStart = null;
     hideSelectionBox();
     selectionBox.remove();
   }
