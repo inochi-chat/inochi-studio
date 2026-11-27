@@ -314,9 +314,19 @@ function deleteSelectedObject() {
     ? selectedObjects
     : [getSelectedObject()].filter(Boolean);
 
-  if (targets.length === 0) return;
+  if (targets.length === 0 && !activeGroup) return;
 
-  // 全対象を事前確認
+  // 選択中のグループがロックされているか確認
+  if (
+    activeGroup &&
+    objectGroup.isGroup(activeGroup) &&
+    objectGroup.isGroupLocked(activeGroup)
+  ) {
+    alert("ロック中のグループは削除できません。先にロックを解除してください。");
+    return;
+  }
+
+  // オブジェクトのロックと親子関係を確認
   for (const object of targets) {
     if (objectLock.isLocked(object)) {
       alert("ロック中のオブジェクトが含まれているため削除できません。");
@@ -335,7 +345,6 @@ function deleteSelectedObject() {
   // 選択状態を解除
   multiSelectionController.clear();
 
-  // 複数削除コマンドを実行
   const command = createDeleteObjectsCommand(
     objectManager,
     targets,
