@@ -22,14 +22,13 @@ export function createMeshEditCommands({
 
   function getTriangles() {
     const geometry = mesh.geometry;
-    const position = geometry.attributes.position;
+    const position = geometry?.attributes?.position;
+
+    if (!position) return [];
+
     const index = geometry.index;
-
+    const count = index ? index.count : position.count;
     const triangles = [];
-
-    const count = index
-      ? index.count
-      : position.count;
 
     for (let i = 0; i + 2 < count; i += 3) {
       const ids = index
@@ -57,7 +56,11 @@ export function createMeshEditCommands({
 
     for (const triangle of triangles) {
       for (const vertex of triangle) {
-        positions.push(vertex.x, vertex.y, vertex.z);
+        positions.push(
+          vertex.x,
+          vertex.y,
+          vertex.z
+        );
       }
     }
 
@@ -74,6 +77,7 @@ export function createMeshEditCommands({
 
     const previous = mesh.geometry;
     mesh.geometry = geometry;
+
     previous.dispose();
 
     onChange();
@@ -83,6 +87,7 @@ export function createMeshEditCommands({
     return a.clone().add(b).multiplyScalar(0.5);
   }
 
+  // 選択した辺を細分化
   function subdivideSelectedEdges() {
     const data = getData();
 
@@ -101,17 +106,27 @@ export function createMeshEditCommands({
 
       if (!edge) continue;
 
-      const a = topology.getVertex(edge.vertices[0]).position;
-      const b = topology.getVertex(edge.vertices[1]).position;
+      const vertexA = topology.getVertex(edge.vertices[0]);
+      const vertexB = topology.getVertex(edge.vertices[1]);
 
-      edgeMidpoints.set(
-        edgeId,
-        midpoint(
-          new THREE.Vector3(a.x, a.y, a.z),
-          new THREE.Vector3(b.x, b.y, b.z)
-        )
+      if (!vertexA || !vertexB) continue;
+
+      const a = new THREE.Vector3(
+        vertexA.position.x,
+        vertexA.position.y,
+        vertexA.position.z
       );
+
+      const b = new THREE.Vector3(
+        vertexB.position.x,
+        vertexB.position.y,
+        vertexB.position.z
+      );
+
+      edgeMidpoints.set(edgeId, midpoint(a, b));
     }
+
+    if (edgeMidpoints.size === 0) return false;
 
     const result = [];
 
@@ -119,38 +134,38 @@ export function createMeshEditCommands({
       const face = topology.getFace(i);
       const triangle = triangles[i];
 
-      const selected = face.edges
-        .filter(id => edgeMidpoints.has(id));
-
-      if (selected.length === 0) {
+      if (!face) {
         result.push(triangle);
         continue;
       }
 
-      const a = triangle[0];
-      const b = triangle[1];
-      const c = triangle[2];
+      const hasSelectedEdge = face.edges.some(
+        edgeId => edgeMidpoints.has(edgeId)
+      );
 
-      const ab = face.edges.includes(
-        face.edges[0]
-      ) ? edgeMidpoints.get(face.edges[0]) : null;
+      if (!hasSelectedEdge) {
+        result.push(triangle);
+        continue;
+      }
 
-      const bc = edgeMidpoints.get(face.edges[1]);
-      const ca = edgeMidpoints.get(face.edges[2]);
+      const points = [
+        triangle[0],
+        triangle[1],
+        triangle[2]
+      ];
 
       const boundary = [];
 
-      const points = [a, b, c];
-
       for (let j = 0; j < 3; j++) {
         const start = points[j];
-        const end = points[(j + 1) % 3];
         const edgeId = face.edges[j];
 
         boundary.push(start.clone());
 
         if (edgeMidpoints.has(edgeId)) {
-          boundary.push(edgeMidpoints.get(edgeId).clone());
+          boundary.push(
+            edgeMidpoints.get(edgeId).clone()
+          );
         }
       }
 
@@ -163,31 +178,43 @@ export function createMeshEditCommands({
       center.divideScalar(boundary.length);
 
       for (let j = 0; j < boundary.length; j++) {
+        const next = (j + 1) % boundary.length;
+
         result.push([
           boundary[j].clone(),
-          boundary[(j + 1) % boundary.length].clone(),
+          boundary[next].clone(),
           center.clone()
         ]);
       }
     }
 
-    if (result.length === triangles.length) return false;
+    if (result.length === triangles.length) {
+      return false;
+    }
 
     rebuildGeometry(result);
     return true;
   }
 
+  // 選択した三角形の面を押し出す
   function extrudeSelectedFaces(distance = 0.2) {
     const data = getData();
 
     if (!data) return false;
 
-    const { topology, selection } = data;
-    const selectedFaces = new Set(selection.faces || []);
+    const { selection } = data;
+    const triangles = getTriangles();
+
+    const selectedFaces = new Set(
+      (selection.faces || []).filter(
+        id => Number.isInteger(id) &&
+          id >= 0 &&
+          id < triangles.length
+      )
+    );
 
     if (selectedFaces.size === 0) return false;
 
-    const triangles = getTriangles();
     const result = [];
 
     for (let i = 0; i < triangles.length; i++) {
@@ -229,14 +256,22 @@ export function createMeshEditCommands({
     return true;
   }
 
+  // 選択した頂点・辺・面に接続する面を削除
   function deleteSelection() {
     const data = getData();
 
     if (!data) return false;
 
     const { topology, selection } = data;
+    const triangles = getTriangles();
 
-    const deletedFaces = new Set(selection.faces || []);
+    const deletedFaces = new Set(
+      (selection.faces || []).filter(
+        id => Number.isInteger(id) &&
+          id >= 0 &&
+          id < triangles.length
+      )
+    );
 
     for (const edgeId of selection.edges || []) {
       const edge = topology.getEdge(edgeId);
@@ -249,20 +284,23 @@ export function createMeshEditCommands({
     }
 
     for (const vertexId of selection.vertices || []) {
-      for (const face of topology.getConnectedFaces(vertexId)) {
+      const connectedFaces =
+        topology.getConnectedFaces(vertexId);
+
+      for (const face of connectedFaces) {
         deletedFaces.add(face.id);
       }
     }
 
     if (deletedFaces.size === 0) return false;
 
-    const triangles = getTriangles();
-
     const result = triangles.filter(
       (_, index) => !deletedFaces.has(index)
     );
 
-    if (result.length === triangles.length) return false;
+    if (result.length === triangles.length) {
+      return false;
+    }
 
     rebuildGeometry(result);
     return true;
