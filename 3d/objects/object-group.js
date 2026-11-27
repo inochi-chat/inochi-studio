@@ -4,6 +4,7 @@ import * as THREE from "three";
 export function createObjectGroup(scene, objectManager) {
   const groups = new Map();
   const groupVisibility = new Map();
+  const groupLocks = new Map();
 
   let groupCounter = 0;
 
@@ -18,7 +19,6 @@ export function createObjectGroup(scene, objectManager) {
 
     if (targets.length < 2) return null;
 
-    // 既存の親子関係がある場合は安全のため禁止
     for (const object of targets) {
       if (object.parent !== scene) return null;
       if (object.children.length > 0) return null;
@@ -31,7 +31,6 @@ export function createObjectGroup(scene, objectManager) {
 
     scene.add(group);
 
-    // 選択オブジェクトの中心にグループを配置
     const center = new THREE.Vector3();
 
     for (const object of targets) {
@@ -41,13 +40,13 @@ export function createObjectGroup(scene, objectManager) {
     center.divideScalar(targets.length);
     group.position.copy(center);
 
-    // ワールド座標を維持してグループへ移動
     for (const object of targets) {
       group.attach(object);
     }
 
     groups.set(group, [...targets]);
     groupVisibility.set(group, true);
+    groupLocks.set(group, false);
 
     return group;
   }
@@ -64,6 +63,7 @@ export function createObjectGroup(scene, objectManager) {
     scene.remove(group);
     groups.delete(group);
     groupVisibility.delete(group);
+    groupLocks.delete(group);
 
     return true;
   }
@@ -82,7 +82,7 @@ export function createObjectGroup(scene, objectManager) {
     return [...groups.keys()];
   }
 
-  // グループの表示・非表示
+  // 表示・非表示
   function setGroupVisible(group, visible) {
     if (!groups.has(group)) return false;
 
@@ -94,7 +94,6 @@ export function createObjectGroup(scene, objectManager) {
     return true;
   }
 
-  // 表示状態を取得
   function isGroupVisible(group) {
     if (!groups.has(group)) return false;
 
@@ -110,14 +109,43 @@ export function createObjectGroup(scene, objectManager) {
     );
   }
 
+  // ロック・ロック解除
+  function setGroupLocked(group, locked) {
+    if (!groups.has(group)) return false;
+
+    groupLocks.set(group, Boolean(locked));
+
+    return true;
+  }
+
+  function isGroupLocked(group) {
+    if (!groups.has(group)) return false;
+
+    return groupLocks.get(group) ?? false;
+  }
+
+  function toggleGroupLock(group) {
+    if (!groups.has(group)) return false;
+
+    return setGroupLocked(
+      group,
+      !isGroupLocked(group)
+    );
+  }
+
   return {
     createGroup,
     ungroup,
     isGroup,
     getGroupObjects,
     getAllGroups,
+
     setGroupVisible,
     isGroupVisible,
-    toggleGroupVisibility
+    toggleGroupVisibility,
+
+    setGroupLocked,
+    isGroupLocked,
+    toggleGroupLock
   };
 }
