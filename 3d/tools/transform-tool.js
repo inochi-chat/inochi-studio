@@ -24,18 +24,25 @@ export function createTransformTool(
     orbit.enabled = !event.value;
   });
 
+  // 自分自身と親グループのロックを確認
   function isLocked(object) {
     if (!object) return false;
 
-    if (objectLock?.isLocked(object)) {
-      return true;
-    }
+    let current = object;
 
-    if (
-      objectGroup?.isGroup(object) &&
-      objectGroup.isGroupLocked(object)
-    ) {
-      return true;
+    while (current && current !== scene) {
+      if (objectLock?.isLocked(current)) {
+        return true;
+      }
+
+      if (
+        objectGroup?.isGroup(current) &&
+        objectGroup.isGroupLocked(current)
+      ) {
+        return true;
+      }
+
+      current = current.parent;
     }
 
     return false;
