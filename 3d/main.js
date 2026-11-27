@@ -653,7 +653,7 @@ function refreshProperties() {
   inner.className = "properties-inner";
 
   
-  if (object.isMesh) {
+  if (true) {
     const meshEditButton = document.createElement("button");
 
     meshEditButton.type = "button";
