@@ -308,25 +308,25 @@ function addCylinder() {
 
 // 16. オブジェクト削除
 function deleteSelectedObject() {
+  // グループが選択されている場合
+  if (activeGroup && objectGroup.isGroup(activeGroup)) {
+    if (objectGroup.isGroupLocked(activeGroup)) {
+      alert("ロック中のグループは削除できません。先にロックを解除してください。");
+      return;
+    }
+
+    alert("グループの削除機能は現在準備中です。先にグループを解除してください。");
+    return;
+  }
+
   const selectedObjects = multiSelection.getAll();
 
   const targets = selectedObjects.length > 0
     ? selectedObjects
     : [getSelectedObject()].filter(Boolean);
 
-  if (targets.length === 0 && !activeGroup) return;
+  if (targets.length === 0) return;
 
-  // 選択中のグループがロックされているか確認
-  if (
-    activeGroup &&
-    objectGroup.isGroup(activeGroup) &&
-    objectGroup.isGroupLocked(activeGroup)
-  ) {
-    alert("ロック中のグループは削除できません。先にロックを解除してください。");
-    return;
-  }
-
-  // オブジェクトのロックと親子関係を確認
   for (const object of targets) {
     if (objectLock.isLocked(object)) {
       alert("ロック中のオブジェクトが含まれているため削除できません。");
@@ -339,10 +339,7 @@ function deleteSelectedObject() {
     }
   }
 
-  // 同時変形グループを解除
   transform.detach();
-
-  // 選択状態を解除
   multiSelectionController.clear();
 
   const command = createDeleteObjectsCommand(
