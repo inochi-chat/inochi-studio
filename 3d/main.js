@@ -237,6 +237,21 @@ function selectGroup(group) {
 }
 
 
+function renameGroup(group, newName) {
+  if (!group || !objectGroup.isGroup(group)) return;
+
+  const command = createRenameGroupCommand(
+    group,
+    newName,
+    () => {
+      refreshEditorUI();
+    }
+  );
+
+  history.execute(command);
+}
+
+
 // 13. 階層UI
 hierarchyUI = createHierarchyUI({
   listContainer: hierarchyListContainer,
