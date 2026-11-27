@@ -11,6 +11,7 @@ export function createMeshToolbar({
 
   let selectionMode = "vertex";
   let multiSelect = false;
+  let editing = true;
 
   const style = document.createElement("style");
 
@@ -35,7 +36,9 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar button {
+      min-width: 0;
       min-height: 48px;
+      padding: 6px 3px;
       border: 1px solid #454b59;
       border-radius: 10px;
       background: #303541;
@@ -43,9 +46,10 @@ export function createMeshToolbar({
       font-size: 13px;
       font-weight: 600;
       touch-action: manipulation;
+      cursor: pointer;
     }
 
-    .mesh-toolbar button:active {
+    .mesh-toolbar button:active:not(:disabled) {
       transform: scale(0.96);
     }
 
@@ -58,10 +62,20 @@ export function createMeshToolbar({
       background: #703b49;
     }
 
+    .mesh-toolbar button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
     .mesh-toolbar-label {
       font-size: 12px;
       color: #b8bdca;
       font-weight: bold;
+    }
+
+    .mesh-toolbar-status {
+      font-size: 12px;
+      color: #aeb8ff;
     }
 
     @media (max-width: 420px) {
@@ -87,6 +101,10 @@ export function createMeshToolbar({
   root.className = "mesh-toolbar";
 
   root.innerHTML = `
+    <div class="mesh-toolbar-status" data-status>
+      Edit Mode
+    </div>
+
     <div class="mesh-toolbar-label">選択モード</div>
 
     <div class="mesh-toolbar-row">
@@ -110,7 +128,7 @@ export function createMeshToolbar({
     <div class="mesh-toolbar-label">メッシュ編集</div>
 
     <div class="mesh-toolbar-row">
-      <button type="button" data-action="addVertex">
+      <button type="button" data-action="addVertex" disabled>
         頂点追加
       </button>
 
@@ -168,34 +186,90 @@ export function createMeshToolbar({
 
   container.appendChild(root);
 
+  const status = root.querySelector("[data-status]");
+
+  function updateModeButtons() {
+    root.querySelectorAll("[data-mode]").forEach(button => {
+      button.classList.toggle(
+        "active",
+        button.dataset.mode === selectionMode
+      );
+    });
+  }
+
+  function updateMultiButton() {
+    const button = root.querySelector('[data-action="multi"]');
+
+    button.classList.toggle("active", multiSelect);
+    button.setAttribute("aria-pressed", String(multiSelect));
+  }
+
+  function setMode(mode) {
+    if (!["vertex", "edge", "face"].includes(mode)) return;
+
+    selectionMode = mode;
+    updateModeButtons();
+  }
+
+  function setMultiSelect(enabled) {
+    multiSelect = Boolean(enabled);
+    updateMultiButton();
+  }
+
+  function setEditing(enabled) {
+    editing = Boolean(enabled);
+
+    status.textContent = editing
+      ? "Edit Mode"
+      : "Object Mode";
+
+    root.querySelectorAll("button").forEach(button => {
+      const action = button.dataset.action;
+
+      if (action === "editMode") {
+        button.disabled = !editing;
+      }
+
+      if (action === "objectMode") {
+        button.disabled = editing;
+      }
+
+      if (button.dataset.mode || action === "multi") {
+        button.disabled = !editing;
+      }
+    });
+  }
+
   root.addEventListener("click", event => {
     const button = event.target.closest("button");
 
-    if (!button || !root.contains(button)) return;
+    if (!button || !root.contains(button) || button.disabled) {
+      return;
+    }
 
     const mode = button.dataset.mode;
     const action = button.dataset.action;
 
     if (mode) {
       selectionMode = mode;
-
-      root.querySelectorAll("[data-mode]").forEach(item => {
-        item.classList.toggle(
-          "active",
-          item.dataset.mode === selectionMode
-        );
-      });
-
+      updateModeButtons();
       onModeChange(selectionMode);
       return;
     }
 
     if (action === "multi") {
-      multiSelect = !multiSelect;
-
-      button.classList.toggle("active", multiSelect);
-
+      setMultiSelect(!multiSelect);
       onMultiSelectChange(multiSelect);
+      return;
+    }
+
+    if (action === "editMode") {
+      onAction(action);
+      return;
+    }
+
+    if (action === "objectMode") {
+      onAction(action);
       return;
     }
 
@@ -204,18 +278,8 @@ export function createMeshToolbar({
     }
   });
 
-  function setMode(mode) {
-    if (!["vertex", "edge", "face"].includes(mode)) return;
-
-    selectionMode = mode;
-
-    root.querySelectorAll("[data-mode]").forEach(button => {
-      button.classList.toggle(
-        "active",
-        button.dataset.mode === mode
-      );
-    });
-  }
+  setEditing(true);
+  updateMultiButton();
 
   function dispose() {
     root.remove();
@@ -225,6 +289,8 @@ export function createMeshToolbar({
   return {
     element: root,
     setMode,
+    setMultiSelect,
+    setEditing,
     dispose
   };
 }
