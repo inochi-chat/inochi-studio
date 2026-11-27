@@ -62,6 +62,14 @@ import {
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
 
+import {
+  createGroupCommand,
+  createUngroupCommand,
+  createRenameGroupCommand,
+  createDeleteGroupCommand
+} from "./history/group-commands.js";
+
+
 // 1. HTML要素
 const canvas = document.querySelector("#threeCanvas");
 const propertyPanel = document.querySelector("#propertyPanel");
@@ -370,52 +378,41 @@ function addCylinder() {
 
 
 // 19. オブジェクト削除
+
 function deleteSelectedObject() {
-  // グループ選択中
   if (activeGroup && objectGroup.isGroup(activeGroup)) {
     if (objectGroup.isGroupLocked(activeGroup)) {
       alert("ロック中のグループは削除できません。先にロックを解除してください。");
       return;
     }
 
-    alert("グループの削除機能は現在準備中です。先にグループを解除してください。");
+    const targetGroup = activeGroup;
+
+    const command = createDeleteGroupCommand(
+      objectGroup,
+      objectManager,
+      targetGroup,
+      group => {
+        activeGroup = group;
+
+        if (group) {
+          transform.attach(group);
+        } else {
+          transform.detach();
+        }
+
+        refreshEditorUI();
+        refreshProperties();
+      }
+    );
+
+    transform.detach();
+    history.execute(command);
     return;
   }
 
-  const selectedObjects = multiSelection.getAll();
-
-  const targets = selectedObjects.length > 0
-    ? selectedObjects
-    : [getSelectedObject()].filter(Boolean);
-
-  if (targets.length === 0) return;
-
-  for (const object of targets) {
-    if (isObjectEffectivelyLocked(object)) {
-      alert("ロック中のオブジェクトが含まれているため削除できません。");
-      return;
-    }
-
-    if (hierarchy.hasChildren(object)) {
-      alert("子オブジェクトがあるものが含まれています。先に親子関係を解除してください。");
-      return;
-    }
-  }
-
-  transform.detach();
-  multiSelectionController.clear();
-  activeGroup = null;
-
-  const command = createDeleteObjectsCommand(
-    objectManager,
-    targets,
-    onHistoryChange
-  );
-
-  history.execute(command);
-
-  refreshEditorUI();
-  refreshProperties();
+  // 通常オブジェクトの削除
+  // 既存の削除処理をここに残す
 }
 
 
