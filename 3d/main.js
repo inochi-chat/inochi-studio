@@ -652,6 +652,28 @@ function refreshProperties() {
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
+  
+  if (object.isMesh) {
+    const meshEditButton = document.createElement("button");
+
+    meshEditButton.type = "button";
+    meshEditButton.textContent = "🔷 メッシュ編集（Edit Mode）";
+
+    meshEditButton.style.width = "100%";
+    meshEditButton.style.minHeight = "48px";
+    meshEditButton.style.marginBottom = "12px";
+    meshEditButton.style.fontSize = "15px";
+    meshEditButton.style.fontWeight = "bold";
+    meshEditButton.style.cursor = "pointer";
+
+    meshEditButton.addEventListener("click", () => {
+      enterMeshEditMode();
+    });
+
+    inner.appendChild(meshEditButton);
+  }
+
+  
   inner.appendChild(createNameEditor(object, refreshEditorUI));
   inner.appendChild(createPositionEditor(object, refreshEditorUI));
   inner.appendChild(createRotationEditor(object));
