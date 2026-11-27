@@ -482,85 +482,40 @@ export function createMeshPicker({
   // 操作イベント
   // -------------------------
 
-  function handlePointerDown(event) {
-    if (event.button !== undefined && event.button !== 0) {
-      return;
-    }
-
-    const rect = element.getBoundingClientRect();
-
-    if (
-      event.clientX < rect.left ||
-      event.clientX > rect.right ||
-      event.clientY < rect.top ||
-      event.clientY > rect.bottom
-    ) {
-      return;
-    }
-
-    pointerStart = {
-      x: event.clientX,
-      y: event.clientY,
-      pointerId: event.pointerId
-    };
-
-    hideSelectionBox();
+  
+function handlePointerDown(event) {
+  if (event.button !== undefined && event.button !== 0) {
+    return;
   }
 
-  function handlePointerMove(event) {
-    if (!pointerStart) return;
+  const rect = element.getBoundingClientRect();
 
-    if (event.pointerId !== pointerStart.pointerId) {
-      return;
-    }
-
-    const dx = event.clientX - pointerStart.x;
-    const dy = event.clientY - pointerStart.y;
-
-    if (Math.hypot(dx, dy) > 8) {
-      updateSelectionBox({
-        x: event.clientX,
-        y: event.clientY
-      });
-    }
+  if (
+    event.clientX < rect.left ||
+    event.clientX > rect.right ||
+    event.clientY < rect.top ||
+    event.clientY > rect.bottom
+  ) {
+    return;
   }
 
-  function handlePointerUp(event) {
-    if (!pointerStart) return;
+  pointerStart = {
+    x: event.clientX,
+    y: event.clientY,
+    pointerId: event.pointerId
+  };
 
-    if (event.pointerId !== pointerStart.pointerId) {
-      return;
-    }
+  // OrbitControlsにドラッグを渡さない
+  event.preventDefault();
+  event.stopPropagation();
 
-    const start = {
-      x: pointerStart.x,
-      y: pointerStart.y
-    };
-
-    const end = {
-      x: event.clientX,
-      y: event.clientY
-    };
-
-    const distance = Math.hypot(
-      end.x - start.x,
-      end.y - start.y
-    );
-
-    pointerStart = null;
-    hideSelectionBox();
-
-    if (distance > 8) {
-      selectByRectangle(start, end);
-    } else {
-      selectAt(end.x, end.y);
-    }
+  if (event.pointerId !== undefined) {
+    element.setPointerCapture(event.pointerId);
   }
 
-  function handlePointerCancel() {
-    pointerStart = null;
-    hideSelectionBox();
-  }
+  hideSelectionBox();
+}
+
 
   // -------------------------
   // モード・複数選択
