@@ -7,6 +7,7 @@ export function createMeshPicker({
   mesh,
   topology,
   visuals,
+  meshEditor = null,
   onSelectionChange = () => {}
 }) {
   if (!camera || !renderer || !mesh || !topology || !visuals) {
@@ -18,6 +19,7 @@ export function createMeshPicker({
 
   let mode = "vertex";
   let multiSelect = false;
+  let pointerStart = null;
 
   const selected = {
     vertices: new Set(),
@@ -25,14 +27,13 @@ export function createMeshPicker({
     faces: new Set()
   };
 
-  let pointerStart = null;
-
   function getActiveSet() {
     return selected[`${mode}s`];
   }
 
   function getWorldPosition(vertexId) {
     const vertex = topology.getVertex(vertexId);
+    if (!vertex) return null;
 
     return mesh.localToWorld(
       new THREE.Vector3(
@@ -48,16 +49,6 @@ export function createMeshPicker({
       id: vertex.id,
       position: getWorldPosition(vertex.id)
     }));
-
-    const threshold =
-      Math.max(
-        0.035,
-        camera.position.distanceTo(
-          mesh.getWorldPosition(new THREE.Vector3())
-        ) * 0.025
-      );
-
-    raycaster.params.Points.threshold = threshold;
 
     const positions = [];
 
@@ -81,16 +72,25 @@ export function createMeshPicker({
       new THREE.PointsMaterial({ size: 12 })
     );
 
+    const worldPosition = mesh.getWorldPosition(new THREE.Vector3());
+
+    raycaster.params.Points.threshold = Math.max(
+      0.015,
+      camera.position.distanceTo(worldPosition) * 0.018
+    );
+
     const hits = raycaster.intersectObject(points);
 
     geometry.dispose();
     points.material.dispose();
 
-    return hits.length ? candidates[hits[0].index].id : null;
+    return hits.length
+      ? candidates[hits[0].index].id
+      : null;
   }
 
   function findEdge() {
-    const threshold = 0.035;
+    const threshold = 0.045;
     let bestId = null;
     let bestDistance = Infinity;
 
@@ -98,23 +98,17 @@ export function createMeshPicker({
       const a = getWorldPosition(edge.vertices[0]);
       const b = getWorldPosition(edge.vertices[1]);
 
-      const midpoint = a.clone().add(b).multiplyScalar(0.5);
-
-      const projectedA = a.clone().project(camera);
-      const projectedB = b.clone().project(camera);
-      const projectedMid = midpoint.clone().project(camera);
+      if (!a || !b) continue;
 
       const screenA = new THREE.Vector2(
-        projectedA.x,
-        projectedA.y
+        a.clone().project(camera).x,
+        a.clone().project(camera).y
       );
 
       const screenB = new THREE.Vector2(
-        projectedB.x,
-        projectedB.y
+        b.clone().project(camera).x,
+        b.clone().project(camera).y
       );
-
-      const screenPoint = pointer.clone();
 
       const segment = screenB.clone().sub(screenA);
       const lengthSquared = segment.lengthSq();
@@ -122,7 +116,7 @@ export function createMeshPicker({
       const t = lengthSquared === 0
         ? 0
         : THREE.MathUtils.clamp(
-            screenPoint.clone().sub(screenA).dot(segment) /
+            pointer.clone().sub(screenA).dot(segment) /
               lengthSquared,
             0,
             1
@@ -132,7 +126,7 @@ export function createMeshPicker({
         segment.multiplyScalar(t)
       );
 
-      const distance = closest.distanceTo(screenPoint);
+      const distance = closest.distanceTo(pointer);
 
       if (distance < threshold && distance < bestDistance) {
         bestDistance = distance;
@@ -150,7 +144,9 @@ export function createMeshPicker({
       return null;
     }
 
-    return hits[0].faceIndex;
+    const face = topology.getFace(hits[0].faceIndex);
+
+    return face ? face.id : null;
   }
 
   function findTarget() {
@@ -165,6 +161,21 @@ export function createMeshPicker({
     visuals.setSelection("vertices", [...selected.vertices]);
     visuals.setSelection("edges", [...selected.edges]);
     visuals.setSelection("faces", [...selected.faces]);
+
+    if (meshEditor) {
+      meshEditor.setSelectedVertices(
+        [...selected.vertices]
+      );
+    }
+  }
+
+  function notifySelection() {
+    onSelectionChange({
+      mode,
+      vertices: [...selected.vertices],
+      edges: [...selected.edges],
+      faces: [...selected.faces]
+    });
   }
 
   function select(id) {
@@ -183,13 +194,7 @@ export function createMeshPicker({
     }
 
     updateVisuals();
-
-    onSelectionChange({
-      mode,
-      vertices: [...selected.vertices],
-      edges: [...selected.edges],
-      faces: [...selected.faces]
-    });
+    notifySelection();
   }
 
   function clearSelection() {
@@ -198,13 +203,7 @@ export function createMeshPicker({
     selected.faces.clear();
 
     updateVisuals();
-
-    onSelectionChange({
-      mode,
-      vertices: [],
-      edges: [],
-      faces: []
-    });
+    notifySelection();
   }
 
   function setMode(nextMode) {
@@ -220,9 +219,15 @@ export function createMeshPicker({
 
   function setMultiSelect(enabled) {
     multiSelect = Boolean(enabled);
+
+    meshEditor?.setMultiSelect(multiSelect);
   }
 
   function handlePointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) {
+      return;
+    }
+
     pointerStart = {
       x: event.clientX,
       y: event.clientY
@@ -240,6 +245,8 @@ export function createMeshPicker({
     if (Math.hypot(dx, dy) > 8) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
+
+    if (!rect.width || !rect.height) return;
 
     pointer.set(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
