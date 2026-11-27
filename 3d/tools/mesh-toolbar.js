@@ -332,10 +332,9 @@ export function createMeshToolbar({
     input.type = "number";
     input.step = "0.1";
     input.inputMode = "decimal";
-    input.value = axis === "Z" ? "0" : "0";
+    input.value = "0";
 
     label.htmlFor = `mesh-transform-${axis.toLowerCase()}`;
-
     input.id = `mesh-transform-${axis.toLowerCase()}`;
 
     field.append(label, input);
@@ -343,6 +342,9 @@ export function createMeshToolbar({
 
     inputs[axis.toLowerCase()] = input;
   }
+
+  const status = document.createElement("div");
+  status.className = "mesh-toolbar-status";
 
   const applyButton = createButton(
     transformPanel,
@@ -461,23 +463,23 @@ export function createMeshToolbar({
   // 編集モード
   sections.modeControl = createSection("編集モード");
 
-  createButton(
+  const editModeButton = createButton(
     sections.modeControl,
     "メッシュ編集",
     "editMode",
     { className: "primary" }
   );
 
-  createButton(
+  const objectModeButton = createButton(
     sections.modeControl,
     "オブジェクトモードに戻る",
     "objectMode"
   );
 
-  const status = document.createElement("div");
-  status.className = "mesh-toolbar-status";
-  status.textContent = "Vertex / Edge / Face から選択してね";
-  root.appendChild(status);
+  const statusElement = document.createElement("div");
+  statusElement.className = "mesh-toolbar-status";
+  statusElement.textContent = "Vertex / Edge / Face から選択してね";
+  root.appendChild(statusElement);
 
   container.replaceChildren(root);
 
@@ -494,7 +496,7 @@ export function createMeshToolbar({
       button.setAttribute("aria-pressed", String(key === mode));
     }
 
-    status.textContent = `${mode.toUpperCase()} モード`;
+    statusElement.textContent = `${mode.toUpperCase()} モード`;
 
     onModeChange?.(mode);
   }
@@ -516,9 +518,10 @@ export function createMeshToolbar({
     editing = Boolean(value);
 
     transformPanel.hidden = !editing;
-    editModeButton?.classList?.toggle("active", editing);
+    editModeButton.classList.toggle("active", editing);
+    objectModeButton.classList.toggle("active", !editing);
 
-    status.textContent = editing
+    statusElement.textContent = editing
       ? `${currentMode.toUpperCase()} モードで編集中`
       : "オブジェクトモード";
   }
