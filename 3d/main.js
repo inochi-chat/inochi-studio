@@ -29,12 +29,6 @@ import { createHistoryManager } from "./history/history-manager.js";
 import { createObjectGroup } from "./objects/object-group.js";
 
 import {
-  createGroupCommand,
-  createUngroupCommand,
-  createRenameGroupCommand
-} from "./history/group-commands.js";
-
-import {
   createAddObjectCommand,
   createDeleteObjectCommand,
   createDeleteObjectsCommand,
@@ -61,14 +55,12 @@ import {
 
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
-
 import {
   createGroupCommand,
   createUngroupCommand,
   createRenameGroupCommand,
   createDeleteGroupCommand
 } from "./history/group-commands.js";
-
 
 // 1. HTML要素
 const canvas = document.querySelector("#threeCanvas");
