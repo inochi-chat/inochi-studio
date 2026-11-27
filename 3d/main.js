@@ -267,7 +267,8 @@ hierarchyUI = createHierarchyUI({
   objectLock,
   onLockChange: handleLockChange,
   objectGroup,
-  onSelectGroup: selectGroup
+  onSelectGroup: selectGroup,
+  onRenameGroup: renameGroup
 });
 
 // 14. 履歴変更時
