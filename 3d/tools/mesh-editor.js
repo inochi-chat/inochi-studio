@@ -9,21 +9,11 @@ export function createMeshEditor({
   onModeChange = () => {},
   onSelectionChange = () => {}
 }) {
-  const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2();
-
   let activeMesh = null;
-  let vertexPoints = null;
-  let vertexGeometry = null;
-  let vertexMaterial = null;
-
   let vertices = [];
   let selectedVertices = new Set();
   let editing = false;
   let multiSelect = false;
-  let pointerStart = null;
-
-  const pointSize = 18;
 
   function positionKey(x, y, z) {
     return `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;
@@ -58,109 +48,6 @@ export function createMeshEditor({
     return unique;
   }
 
-  function createVertexVisual() {
-    if (!activeMesh) return;
-
-    vertices = getUniqueVertices(activeMesh);
-
-    const positions = [];
-    const colors = [];
-
-    for (const vertex of vertices) {
-      positions.push(
-        vertex.position.x,
-        vertex.position.y,
-        vertex.position.z
-      );
-
-      colors.push(1, 0.55, 0.15);
-    }
-
-    vertexGeometry = new THREE.BufferGeometry();
-
-    vertexGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3)
-    );
-
-    vertexGeometry.setAttribute(
-      "color",
-      new THREE.Float32BufferAttribute(colors, 3)
-    );
-
-    vertexMaterial = new THREE.PointsMaterial({
-      size: pointSize,
-      sizeAttenuation: false,
-      vertexColors: true,
-      depthTest: true,
-      transparent: true
-    });
-
-    vertexPoints = new THREE.Points(
-      vertexGeometry,
-      vertexMaterial
-    );
-
-    vertexPoints.renderOrder = 10;
-    activeMesh.add(vertexPoints);
-
-    updateVertexColors();
-  }
-
-  function updateVertexColors() {
-    if (!vertexGeometry) return;
-
-    const colors = vertexGeometry.attributes.color;
-
-    for (let i = 0; i < vertices.length; i++) {
-      const selected = selectedVertices.has(i);
-
-      colors.setXYZ(
-        i,
-        selected ? 0.1 : 1,
-        selected ? 0.8 : 0.55,
-        selected ? 1 : 0.15
-      );
-    }
-
-    colors.needsUpdate = true;
-  }
-
-  function refreshVertexPositions() {
-    if (!activeMesh || !vertexGeometry) return;
-
-    vertices = getUniqueVertices(activeMesh);
-
-    const positions = vertexGeometry.attributes.position;
-
-    positions.array = new Float32Array(
-      vertices.flatMap(vertex => [
-        vertex.position.x,
-        vertex.position.y,
-        vertex.position.z
-      ])
-    );
-
-    positions.count = vertices.length;
-    positions.needsUpdate = true;
-
-    updateVertexColors();
-  }
-
-  function removeVertexVisual() {
-    if (vertexPoints && activeMesh) {
-      activeMesh.remove(vertexPoints);
-    }
-
-    vertexGeometry?.dispose();
-    vertexMaterial?.dispose();
-
-    vertexPoints = null;
-    vertexGeometry = null;
-    vertexMaterial = null;
-    vertices = [];
-  }
-
   function enterEditMode(mesh) {
     if (
       !mesh ||
@@ -174,10 +61,8 @@ export function createMeshEditor({
     exitEditMode();
 
     activeMesh = mesh;
+    vertices = getUniqueVertices(mesh);
     selectedVertices.clear();
-
-    createVertexVisual();
-
     editing = true;
 
     onModeChange({
@@ -193,9 +78,8 @@ export function createMeshEditor({
   function exitEditMode() {
     if (!editing && !activeMesh) return;
 
-    removeVertexVisual();
-
     activeMesh = null;
+    vertices = [];
     selectedVertices.clear();
     editing = false;
 
@@ -211,9 +95,20 @@ export function createMeshEditor({
     multiSelect = Boolean(enabled);
   }
 
+  function setSelectedVertices(ids = []) {
+    selectedVertices.clear();
+
+    for (const id of ids) {
+      if (vertices[id]) {
+        selectedVertices.add(id);
+      }
+    }
+
+    onSelectionChange(getSelectedVertices());
+  }
+
   function clearSelection() {
     selectedVertices.clear();
-    updateVertexColors();
     onSelectionChange([]);
   }
 
@@ -241,80 +136,31 @@ export function createMeshEditor({
       selectedVertices.add(id);
     }
 
-    updateVertexColors();
     onSelectionChange(getSelectedVertices());
   }
 
-  function handlePointerDown(event) {
-    if (!editing || !vertexPoints) return;
+  function refreshVertexPositions() {
+    if (!activeMesh) return;
 
-    pointerStart = {
-      x: event.clientX,
-      y: event.clientY
-    };
+    vertices = getUniqueVertices(activeMesh);
+
+    selectedVertices = new Set(
+      [...selectedVertices].filter(id => vertices[id])
+    );
+
+    onSelectionChange(getSelectedVertices());
   }
-
-  function handlePointerUp(event) {
-    if (!editing || !vertexPoints || !pointerStart) return;
-
-    const dx = event.clientX - pointerStart.x;
-    const dy = event.clientY - pointerStart.y;
-
-    pointerStart = null;
-
-    if (Math.hypot(dx, dy) > 8) return;
-
-    const rect = renderer.domElement.getBoundingClientRect();
-
-    pointer.x =
-      ((event.clientX - rect.left) / rect.width) * 2 - 1;
-
-    pointer.y =
-      -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycaster.params.Points.threshold =
-      Math.max(
-        0.015,
-        camera.position.distanceTo(
-          activeMesh.getWorldPosition(new THREE.Vector3())
-        ) * 0.018
-      );
-
-    raycaster.setFromCamera(pointer, camera);
-
-    const hits = raycaster.intersectObject(vertexPoints);
-
-    if (hits.length === 0) return;
-
-    const id = hits[0].index;
-
-    if (id !== undefined) {
-      selectVertex(id);
-    }
-  }
-
-  function handlePointerCancel() {
-    pointerStart = null;
-  }
-
-  const element = renderer.domElement;
-
-  element.addEventListener("pointerdown", handlePointerDown);
-  element.addEventListener("pointerup", handlePointerUp);
-  element.addEventListener("pointercancel", handlePointerCancel);
 
   function dispose() {
     exitEditMode();
-
-    element.removeEventListener("pointerdown", handlePointerDown);
-    element.removeEventListener("pointerup", handlePointerUp);
-    element.removeEventListener("pointercancel", handlePointerCancel);
   }
 
   return {
     enterEditMode,
     exitEditMode,
     setMultiSelect,
+    setSelectedVertices,
+    selectVertex,
     clearSelection,
     getSelectedVertices,
     refreshVertexPositions,
