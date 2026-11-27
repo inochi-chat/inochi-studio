@@ -1,4 +1,6 @@
+
 import * as THREE from "three";
+
 export function createObjectSelection({
   camera,
   renderer,
@@ -7,12 +9,16 @@ export function createObjectSelection({
   objectLock,
   onSelect,
   multiSelectionController,
-  multiSelectionMode
+  multiSelectionMode,
+  isEnabled = () => true
 }) {
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
   function selectAtPointer(event) {
+    // 通常選択が無効なら何もしない
+    if (!isEnabled()) return;
+
     if (transform.dragging) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
