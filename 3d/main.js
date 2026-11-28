@@ -15,6 +15,7 @@ import { createObjectGroup } from "./objects/object-group.js";
 import { createPropertyPanel } from "./app/property-panel.js";
 import { createEditorUI } from "./app/editor-ui.js";
 import { createSelectionSystem } from "./app/selection-controller.js";
+import { createSelectionActions } from "./app/selection-actions.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 import { createHistoryManager } from "./history/history-manager.js";
@@ -380,49 +381,44 @@ function refreshProperties() {
 }
 
 // =====================================================
-// 14. メイン選択の更新
+// 14. 選択操作モジュール
+// =====================================================
+
+const selectionActions = createSelectionActions({
+  objectManager,
+  objectGroup,
+  multiSelectionController,
+  transform,
+
+  isMeshEditing: () => meshEditing,
+
+  isObjectEffectivelyLocked,
+
+  refreshEditorUI,
+  refreshProperties,
+
+  setActiveGroup(group) {
+    activeGroup = group;
+  }
+});
+
+// =====================================================
+// 15. 選択処理
 // =====================================================
 
 function selectPrimaryObject(object, selectedObjects = null) {
-  if (meshEditing) return;
-
-  activeGroup = null;
-
-  if (object && isObjectEffectivelyLocked(object)) {
-    object = null;
-    selectedObjects = [];
-  }
-
-  objectManager.select(object);
-
-  const selectedObject = getSelectedObject();
-
-  if (selectedObjects && selectedObjects.length > 1) {
-    transform.attachMultiple(selectedObjects);
-  } else if (selectedObject) {
-    transform.attach(selectedObject);
-  } else {
-    transform.detach();
-  }
-
-  refreshEditorUI();
-  refreshProperties();
+  selectionActions.selectPrimaryObject(
+    object,
+    selectedObjects
+  );
 }
 
-// =====================================================
-// 15. 通常の単体選択
-// =====================================================
-
 function selectObject(object) {
-  if (meshEditing) return;
+  selectionActions.selectObject(object);
+}
 
-  if (object && isObjectEffectivelyLocked(object)) {
-    alert("ロック中のオブジェクトは選択・編集できません。");
-    return;
-  }
-
-  activeGroup = null;
-  multiSelectionController.select(object, false);
+function selectGroup(group) {
+  selectionActions.selectGroup(group);
 }
 
 // =====================================================
@@ -435,24 +431,7 @@ objectListView = createObjectList(
 );
 
 // =====================================================
-// 17. グループ選択
-// =====================================================
-
-function selectGroup(group) {
-  if (meshEditing) return;
-  if (!group || !objectGroup.isGroup(group)) return;
-
-  multiSelectionController.clear();
-  activeGroup = group;
-  objectManager.select(null);
-  transform.attach(group);
-
-  refreshEditorUI();
-  refreshProperties();
-}
-
-// =====================================================
-// 18. グループ名変更
+// 17. グループ名変更
 // =====================================================
 
 function renameGroup(group, newName) {
@@ -474,7 +453,7 @@ function renameGroup(group, newName) {
 }
 
 // =====================================================
-// 19. 階層操作モジュール
+// 18. 階層操作モジュール
 // =====================================================
 
 const hierarchyActions = createHierarchyActions({
@@ -493,7 +472,7 @@ const hierarchyActions = createHierarchyActions({
 });
 
 // =====================================================
-// 20. 階層UI
+// 19. 階層UI
 // =====================================================
 
 hierarchyUI = createHierarchyUI({
@@ -526,7 +505,7 @@ editorUI = createEditorUI({
 });
 
 // =====================================================
-// 21. 履歴変更時
+// 20. 履歴変更時
 // =====================================================
 
 function onHistoryChange(object) {
@@ -537,7 +516,7 @@ function onHistoryChange(object) {
 }
 
 // =====================================================
-// 22. オブジェクト操作モジュール
+// 21. オブジェクト操作モジュール
 // =====================================================
 
 const objectActions = createObjectActions({
@@ -563,7 +542,7 @@ const objectActions = createObjectActions({
 });
 
 // =====================================================
-// 23. メッシュ操作モジュール
+// 22. メッシュ操作モジュール
 // =====================================================
 
 const meshActions = createMeshActions({
@@ -580,7 +559,7 @@ const meshActions = createMeshActions({
 });
 
 // =====================================================
-// 24. グループ操作ボタン
+// 23. グループ操作ボタン
 // =====================================================
 
 document
@@ -598,7 +577,7 @@ document
   );
 
 // =====================================================
-// 25. 複数選択モード
+// 24. 複数選択モード
 // =====================================================
 
 function updateMultiSelectionButton() {
@@ -633,7 +612,7 @@ multiSelectionButton?.addEventListener("click", () => {
 updateMultiSelectionButton();
 
 // =====================================================
-// 26. Undo・Redo
+// 25. Undo・Redo
 // =====================================================
 
 function undo() {
@@ -655,7 +634,7 @@ function redo() {
 }
 
 // =====================================================
-// 27. 3D画面からの通常選択
+// 26. 3D画面からの通常選択
 // =====================================================
 
 const objectSelection = selectionSystem.createObjectPicker({
@@ -670,7 +649,7 @@ const objectSelection = selectionSystem.createObjectPicker({
 });
 
 // =====================================================
-// 28. ボタン接続
+// 27. ボタン接続
 // =====================================================
 
 document.querySelector("#addCube")
@@ -710,7 +689,7 @@ document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
 // =====================================================
-// 29. キーボードショートカット
+// 28. キーボードショートカット
 // =====================================================
 
 document.addEventListener("keydown", event => {
@@ -743,7 +722,7 @@ document.addEventListener("keydown", event => {
 });
 
 // =====================================================
-// 30. 初期キューブ
+// 29. 初期キューブ
 // =====================================================
 
 const initialCubeGeometry = createGeometry("cube");
@@ -758,7 +737,7 @@ if (initialCube) {
 }
 
 // =====================================================
-// 31. 描画ループ
+// 30. 描画ループ
 // =====================================================
 
 function animate() {
