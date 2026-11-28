@@ -11,7 +11,6 @@ import { createHierarchyOrder } from "./objects/hierarchy-order.js";
 import { createObjectVisibility } from "./objects/object-visibility.js";
 import { createObjectLock } from "./objects/object-lock.js";
 import { createObjectGroup } from "./objects/object-group.js";
-import { createDuplicateButton } from "./objects/duplicate-button.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -26,34 +25,19 @@ import { createMultiSelectionController } from "./selection/multi-selection-cont
 import { createMultiSelectionMode } from "./selection/multi-selection-mode.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
-
 import { createHistoryManager } from "./history/history-manager.js";
 
-import {
-  createSetParentCommand,
-  createRemoveParentCommand
-} from "./history/hierarchy-commands.js";
-
-import {
-  createMoveHierarchyObjectCommand
-} from "./history/hierarchy-order-commands.js";
-
-import { createVisibilityCommand } from "./history/visibility-command.js";
-import { createLockCommand } from "./history/lock-command.js";
-
-import {
-  createRenameGroupCommand
-} from "./history/group-commands.js";
+import { createRenameGroupCommand } from "./history/group-commands.js";
 
 import { createMeshEditor } from "./tools/mesh-editor.js";
 import { createMeshOperations } from "./tools/mesh-operations.js";
-
 import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 
 import { createMeshSculptController } from "./app/mesh-sculpt.js";
 import { createMeshEditing } from "./app/mesh-editing.js";
 import { createMeshActions } from "./app/mesh-actions.js?v=2";
 import { createObjectActions } from "./app/object-actions.js";
+import { createHierarchyActions } from "./app/hierarchy-actions.js";
 
 // =====================================================
 // 1. HTML要素
@@ -214,17 +198,18 @@ let meshSculptStrength = 0.1;
 
 let meshEditingController = null;
 
-// メッシュ編集状態を取得
 function getMeshState() {
   return meshEditingController?.getState() ?? {};
 }
 
-// メッシュ編集用の再構築
 function rebuildMeshTools() {
   meshEditingController?.rebuild();
 }
 
-// スカルプト処理
+// =====================================================
+// 10. スカルプト処理
+// =====================================================
+
 const meshSculptController = createMeshSculptController({
   getOperations: () => meshOperations,
 
@@ -254,7 +239,10 @@ const meshSculptController = createMeshSculptController({
   }
 });
 
-// メッシュ編集管理モジュール
+// =====================================================
+// 11. メッシュ編集管理モジュール
+// =====================================================
+
 meshEditingController = createMeshEditing({
   scene,
   camera,
@@ -297,7 +285,6 @@ meshEditingController = createMeshEditing({
   getGizmoVisible: () => meshGizmoVisible
 });
 
-// メッシュ編集終了
 function exitMeshEditMode() {
   if (!meshEditing) return;
 
@@ -306,7 +293,6 @@ function exitMeshEditMode() {
   meshEditingController.exit();
 }
 
-// メッシュ編集開始
 function enterMeshEditMode() {
   if (meshEditing) return;
 
@@ -319,7 +305,7 @@ function enterMeshEditMode() {
 }
 
 // =====================================================
-// 10. メッシュツールバー
+// 12. メッシュツールバー
 // =====================================================
 
 const meshToolbar = createMeshToolbar({
@@ -373,7 +359,7 @@ meshToolbar.setEditing(false);
 meshToolbarContainer.hidden = true;
 
 // =====================================================
-// 11. プロパティ表示
+// 13. プロパティ表示
 // =====================================================
 
 function refreshProperties() {
@@ -438,7 +424,7 @@ function refreshProperties() {
 }
 
 // =====================================================
-// 12. メイン選択の更新
+// 14. メイン選択の更新
 // =====================================================
 
 function selectPrimaryObject(object, selectedObjects = null) {
@@ -468,7 +454,7 @@ function selectPrimaryObject(object, selectedObjects = null) {
 }
 
 // =====================================================
-// 13. 複数選択の管理
+// 15. 複数選択の管理
 // =====================================================
 
 const multiSelectionController = createMultiSelectionController({
@@ -486,7 +472,7 @@ const multiSelectionController = createMultiSelectionController({
 });
 
 // =====================================================
-// 14. 通常の単体選択
+// 16. 通常の単体選択
 // =====================================================
 
 function selectObject(object) {
@@ -502,7 +488,7 @@ function selectObject(object) {
 }
 
 // =====================================================
-// 15. オブジェクト一覧
+// 17. オブジェクト一覧
 // =====================================================
 
 objectListView = createObjectList(
@@ -511,7 +497,7 @@ objectListView = createObjectList(
 );
 
 // =====================================================
-// 16. グループ選択
+// 18. グループ選択
 // =====================================================
 
 function selectGroup(group) {
@@ -528,7 +514,7 @@ function selectGroup(group) {
 }
 
 // =====================================================
-// 17. グループ名変更
+// 19. グループ名変更
 // =====================================================
 
 function renameGroup(group, newName) {
@@ -550,7 +536,26 @@ function renameGroup(group, newName) {
 }
 
 // =====================================================
-// 18. 階層UI
+// 20. 階層操作モジュール
+// =====================================================
+
+const hierarchyActions = createHierarchyActions({
+  hierarchy,
+  hierarchyOrder,
+  visibility,
+  objectLock,
+  multiSelection,
+  multiSelectionController,
+  getSelectedObject,
+  isObjectEffectivelyLocked,
+  isEditing: () => meshEditing,
+  history,
+  refreshEditorUI,
+  refreshProperties
+});
+
+// =====================================================
+// 21. 階層UI
 // =====================================================
 
 hierarchyUI = createHierarchyUI({
@@ -560,15 +565,15 @@ hierarchyUI = createHierarchyUI({
   hierarchy,
 
   onSelect: selectObject,
-  onSetParent: setObjectParent,
-  onRemoveParent: removeObjectParent,
-  onMove: moveHierarchyObject,
+  onSetParent: hierarchyActions.setObjectParent,
+  onRemoveParent: hierarchyActions.removeObjectParent,
+  onMove: hierarchyActions.moveHierarchyObject,
 
   visibility,
-  onVisibilityChange: handleVisibilityChange,
+  onVisibilityChange: hierarchyActions.handleVisibilityChange,
 
   objectLock,
-  onLockChange: handleLockChange,
+  onLockChange: hierarchyActions.handleLockChange,
 
   objectGroup,
   onSelectGroup: selectGroup,
@@ -576,7 +581,7 @@ hierarchyUI = createHierarchyUI({
 });
 
 // =====================================================
-// 19. 履歴変更時
+// 22. 履歴変更時
 // =====================================================
 
 function onHistoryChange(object) {
@@ -587,7 +592,7 @@ function onHistoryChange(object) {
 }
 
 // =====================================================
-// 20. オブジェクト操作モジュール
+// 23. オブジェクト操作モジュール
 // =====================================================
 
 const objectActions = createObjectActions({
@@ -613,7 +618,7 @@ const objectActions = createObjectActions({
 });
 
 // =====================================================
-// 21. メッシュ操作モジュール
+// 24. メッシュ操作モジュール
 // =====================================================
 
 const meshActions = createMeshActions({
@@ -630,7 +635,7 @@ const meshActions = createMeshActions({
 });
 
 // =====================================================
-// 22. グループ操作ボタン
+// 25. グループ操作ボタン
 // =====================================================
 
 document
@@ -648,162 +653,7 @@ document
   );
 
 // =====================================================
-// 23. 親子関係の設定
-// =====================================================
-
-function setObjectParent(child, parent) {
-  if (meshEditing) return;
-
-  if (
-    isObjectEffectivelyLocked(child) ||
-    isObjectEffectivelyLocked(parent)
-  ) {
-    alert("ロック中のオブジェクトは親子関係を変更できません。");
-    return;
-  }
-
-  if (!hierarchy.canSetParent(child, parent)) {
-    alert("この親子関係は設定できません。");
-    return;
-  }
-
-  const command = createSetParentCommand(
-    hierarchy,
-    child,
-    parent,
-    () => {
-      refreshEditorUI();
-      refreshProperties();
-    }
-  );
-
-  if (command) {
-    history.execute(command);
-  }
-}
-
-// =====================================================
-// 24. 親子関係の解除
-// =====================================================
-
-function removeObjectParent(child) {
-  if (meshEditing) return;
-
-  if (isObjectEffectivelyLocked(child)) {
-    alert("ロック中のオブジェクトは親子関係を変更できません。");
-    return;
-  }
-
-  const command = createRemoveParentCommand(
-    hierarchy,
-    child,
-    () => {
-      refreshEditorUI();
-      refreshProperties();
-    }
-  );
-
-  if (command) {
-    history.execute(command);
-  }
-}
-
-// =====================================================
-// 25. 階層の並び替え
-// =====================================================
-
-function moveHierarchyObject(object, target, position) {
-  if (meshEditing) return;
-
-  if (
-    isObjectEffectivelyLocked(object) ||
-    isObjectEffectivelyLocked(target)
-  ) {
-    return;
-  }
-
-  if (!hierarchyOrder.canMove(object, target)) return;
-
-  const siblings = hierarchyOrder.getSiblings(object);
-  const oldIndex = hierarchyOrder.getIndex(object);
-  const targetIndex = siblings.indexOf(target);
-
-  if (oldIndex < 0 || targetIndex < 0) return;
-
-  let newIndex = targetIndex +
-    (position === "after" ? 1 : 0);
-
-  if (oldIndex < newIndex) newIndex--;
-
-  if (oldIndex === newIndex) return;
-
-  const command = createMoveHierarchyObjectCommand(
-    hierarchyOrder,
-    object,
-    newIndex,
-    refreshEditorUI
-  );
-
-  if (command) {
-    history.execute(command);
-  }
-}
-
-// =====================================================
-// 26. 表示・非表示の変更
-// =====================================================
-
-function handleVisibilityChange(object, newVisible) {
-  if (meshEditing) return;
-
-  const command = createVisibilityCommand(
-    visibility,
-    object,
-    newVisible,
-    refreshEditorUI
-  );
-
-  if (command) {
-    history.execute(command);
-  }
-}
-
-// =====================================================
-// 27. ロック・ロック解除
-// =====================================================
-
-function handleLockChange(object, newLocked) {
-  if (meshEditing) return;
-
-  const command = createLockCommand(
-    objectLock,
-    object,
-    newLocked,
-    () => {
-      if (
-        objectLock.isLocked(object) &&
-        multiSelection.has(object)
-      ) {
-        multiSelectionController.select(
-          getSelectedObject() === object
-            ? null
-            : getSelectedObject(),
-          false
-        );
-      } else {
-        refreshEditorUI();
-        refreshProperties();
-      }
-    }
-  );
-
-  if (command) {
-    history.execute(command);
-  }
-}
-
-// =====================================================
-// 28. 複数選択モード
+// 26. 複数選択モード
 // =====================================================
 
 function updateMultiSelectionButton() {
@@ -838,7 +688,7 @@ multiSelectionButton?.addEventListener("click", () => {
 updateMultiSelectionButton();
 
 // =====================================================
-// 29. Undo・Redo
+// 27. Undo・Redo
 // =====================================================
 
 function undo() {
@@ -860,7 +710,7 @@ function redo() {
 }
 
 // =====================================================
-// 30. 3D画面からの通常選択
+// 28. 3D画面からの通常選択
 // =====================================================
 
 const objectSelection = createObjectSelection({
@@ -879,7 +729,7 @@ const objectSelection = createObjectSelection({
 });
 
 // =====================================================
-// 31. ボタン接続
+// 29. ボタン接続
 // =====================================================
 
 document.querySelector("#addCube")
@@ -919,7 +769,7 @@ document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
 // =====================================================
-// 32. キーボードショートカット
+// 30. キーボードショートカット
 // =====================================================
 
 document.addEventListener("keydown", event => {
@@ -952,7 +802,7 @@ document.addEventListener("keydown", event => {
 });
 
 // =====================================================
-// 33. 初期キューブ
+// 31. 初期キューブ
 // =====================================================
 
 const initialCubeGeometry = createGeometry("cube");
@@ -967,7 +817,7 @@ if (initialCube) {
 }
 
 // =====================================================
-// 34. 描画ループ
+// 32. 描画ループ
 // =====================================================
 
 function animate() {
