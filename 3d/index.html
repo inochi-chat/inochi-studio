@@ -3,7 +3,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#17152b">
   <title>Inochi Studio - 3D Editor</title>
 
@@ -31,14 +31,20 @@
       --accent-light: #c9b5ff;
       --text: #f5f0ff;
       --muted: #aaa0c8;
+      --header-height: 52px;
+      --sidebar-width: 230px;
+      --properties-width: 260px;
     }
 
+    html,
     body {
+      width: 100%;
+      height: 100%;
       margin: 0;
+      overflow: hidden;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      overflow: hidden;
     }
 
     button,
@@ -56,17 +62,12 @@
       background: #30284c;
       color: var(--text);
       cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
       touch-action: manipulation;
     }
 
     button:hover {
       background: var(--panel-hover);
       border-color: var(--accent);
-    }
-
-    button:active {
-      background: #62518d;
     }
 
     button:focus-visible,
@@ -77,195 +78,52 @@
     }
 
     header {
-      height: 55px;
+      height: var(--header-height);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding: 0 14px;
       background: var(--panel);
       border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 100;
     }
 
     .logo {
       font-weight: 800;
-      letter-spacing: 1.5px;
-      font-size: 14px;
+      letter-spacing: 1.3px;
+      font-size: 13px;
     }
 
     header a {
       color: var(--accent-light);
       text-decoration: none;
       font-size: 13px;
-      padding: 9px 12px;
+      padding: 8px 12px;
       border-radius: 7px;
     }
 
-    header a:hover {
-      background: var(--panel-hover);
-    }
-
-    /* メインレイアウト */
-
     .editor {
-      --sidebar-width: 220px;
-
-      display: grid;
-      grid-template-columns:
-        var(--sidebar-width)
-        10px
-        minmax(0, 1fr)
-        250px;
-
-      grid-template-rows: minmax(0, 1fr);
-      height: calc(100dvh - 55px);
-      min-height: 0;
-      min-width: 0;
-    }
-
-    .sidebar {
-      min-width: 0;
-      min-height: 0;
-      padding: 14px 12px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      scrollbar-width: thin;
-      scrollbar-color: #62518d transparent;
-    }
-
-    .sidebar h3 {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent-light);
-      letter-spacing: 0.5px;
-      margin: 17px 0 9px;
-    }
-
-    .sidebar h3:first-child {
-      margin-top: 3px;
-    }
-
-    .sidebar > button {
-      width: 100%;
-    }
-
-    /* 右側プロパティ */
-
-    .properties {
-      grid-column: 4;
-      grid-row: 1;
-      border-right: none;
-      border-left: 1px solid var(--border);
-    }
-
-    .properties-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-width: 0;
-      margin-bottom: 12px;
-    }
-
-    .properties-header h3 {
-      margin: 4px 0;
-    }
-
-    #togglePropertiesButton {
-      flex: 0 0 auto;
-      width: auto;
-      min-width: 88px;
-      min-height: 38px;
-      padding: 6px 10px;
-      margin: 0;
-      font-size: 12px;
-      font-weight: 700;
-      background: #493b70;
-      border-color: #7964a8;
-    }
-
-    .properties.collapsed #propertyPanel {
-      display: none;
-    }
-
-    /* デスクトップでプロパティを細くする */
-
-    .editor.properties-collapsed {
-      grid-template-columns:
-        var(--sidebar-width)
-        10px
-        minmax(0, 1fr)
-        48px;
-    }
-
-    .properties.collapsed {
-      padding: 10px 4px;
-      overflow: hidden;
-    }
-
-    .properties.collapsed .properties-header {
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .properties.collapsed .properties-header h3 {
-      writing-mode: vertical-rl;
-      margin: 5px auto;
-      letter-spacing: 2px;
-    }
-
-    .properties.collapsed #togglePropertiesButton {
-      width: 40px;
-      min-width: 40px;
-      padding: 5px 2px;
-      font-size: 11px;
-      writing-mode: vertical-rl;
-    }
-
-    /* 左サイドバーの伸縮バー */
-
-    .sidebar-resizer {
-      grid-column: 2;
-      grid-row: 1;
       position: relative;
-      background: var(--bg);
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      cursor: col-resize;
-      touch-action: none;
-      z-index: 20;
-      user-select: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) var(--properties-width);
+      grid-template-rows: minmax(0, 1fr);
+      width: 100%;
+      height: calc(100dvh - var(--header-height));
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      transition: grid-template-columns .2s ease;
     }
-
-    .sidebar-resizer::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 2px;
-      width: 4px;
-      background: #7964a8;
-      opacity: 0.55;
-      border-radius: 4px;
-    }
-
-    .sidebar-resizer:active::after {
-      background: var(--accent-light);
-      opacity: 1;
-    }
-
-    /* 3Dビューポート */
 
     .viewport {
-      grid-column: 3;
+      grid-column: 1;
       grid-row: 1;
       position: relative;
       min-width: 0;
       min-height: 0;
       overflow: hidden;
-      background:
-        radial-gradient(ellipse at center, #282342 0%, #17152b 75%);
+      background: radial-gradient(ellipse at center, #282342 0%, #17152b 75%);
     }
 
     #threeCanvas {
@@ -283,34 +141,49 @@
       font-size: 10px;
       letter-spacing: 1.5px;
       pointer-events: none;
-      opacity: 0.8;
+      opacity: .8;
     }
 
-    /* メッシュ編集ツールバー */
+    /* 左パネル */
 
-    #meshToolbarContainer {
+    .sidebar {
       position: absolute;
-      left: 8px;
-      right: 8px;
-      bottom: 8px;
-      z-index: 30;
-      max-height: 48%;
+      z-index: 50;
+      top: 10px;
+      bottom: 10px;
+      left: 10px;
+      width: min(var(--sidebar-width), calc(100vw - 24px));
+      padding: 14px 12px;
       overflow-y: auto;
-      pointer-events: none;
+      overflow-x: hidden;
+      background: rgba(33, 29, 57, .97);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.4);
+      transform: translateX(calc(-100% - 20px));
+      transition: transform .2s ease;
       scrollbar-width: thin;
     }
 
-    #meshToolbarContainer .mesh-toolbar {
-      width: 100%;
-      max-width: 560px;
-      margin: 0 auto;
-      pointer-events: auto;
-      box-shadow: 0 5px 22px rgba(0, 0, 0, 0.45);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+    .sidebar.open {
+      transform: translateX(0);
     }
 
-    /* 操作履歴 */
+    .sidebar h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-light);
+      letter-spacing: .5px;
+      margin: 17px 0 9px;
+    }
+
+    .sidebar h3:first-child {
+      margin-top: 3px;
+    }
+
+    .sidebar > button {
+      width: 100%;
+    }
 
     .history-buttons {
       display: grid;
@@ -325,22 +198,112 @@
       font-size: 12px;
     }
 
-    /* 複製 */
-
-    #duplicateObject {
+    #duplicateObject,
+    #multiSelectionButton {
       background: #493b70;
       border-color: #7964a8;
-    }
-
-    #duplicateObject:hover {
-      background: #604b91;
-      border-color: var(--accent-light);
     }
 
     #multiSelectionButton.active {
       background: #604b91;
       border-color: var(--accent-light);
+    }
+
+    /* パネル開閉ボタン */
+
+    .panel-toggle {
+      position: absolute;
+      z-index: 80;
+      top: 12px;
+      left: 12px;
+      width: 48px;
+      height: 48px;
+      min-height: 48px;
+      padding: 0;
+      margin: 0;
+      border: 1px solid #7964a8;
+      border-radius: 12px;
+      background: #30284c;
       color: white;
+      font-size: 23px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+    }
+
+    .sidebar.open ~ .panel-toggle {
+      left: calc(min(var(--sidebar-width), 100vw - 24px) + 22px);
+    }
+
+    /* オブジェクトプロパティ */
+
+    .properties {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      transition: width .2s ease;
+    }
+
+    .properties-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      margin-bottom: 12px;
+    }
+
+    .properties-header h3 {
+      margin: 4px 0;
+      font-size: 12px;
+      color: var(--accent-light);
+    }
+
+    #togglePropertiesButton {
+      flex: 0 0 auto;
+      min-width: 75px;
+      min-height: 38px;
+      padding: 6px 8px;
+      margin: 0;
+      font-size: 11px;
+      font-weight: 700;
+      background: #493b70;
+      border-color: #7964a8;
+    }
+
+    .properties.collapsed {
+      padding: 8px 4px;
+      overflow: hidden;
+    }
+
+    .properties.collapsed #propertyPanel {
+      display: none;
+    }
+
+    .properties.collapsed .properties-header {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .properties.collapsed .properties-header h3 {
+      writing-mode: vertical-rl;
+      margin: 5px auto;
+      letter-spacing: 2px;
+    }
+
+    .properties.collapsed #togglePropertiesButton {
+      min-width: 38px;
+      width: 38px;
+      padding: 5px 2px;
+      writing-mode: vertical-rl;
+    }
+
+    .editor.properties-collapsed {
+      grid-template-columns: minmax(0, 1fr) 46px;
     }
 
     /* プロパティ入力 */
@@ -389,13 +352,13 @@
     }
 
     .empty {
-      color: #aaa0c8;
+      color: var(--muted);
       font-size: 12px;
       line-height: 1.8;
       padding: 5px 2px;
     }
 
-    /* オブジェクト階層 */
+    /* 階層 */
 
     .hierarchy-item {
       display: flex;
@@ -408,7 +371,6 @@
     .hierarchy-row {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
       gap: 4px;
       width: 100%;
       min-width: 0;
@@ -424,10 +386,6 @@
       border: none;
       color: var(--accent-light);
       font-size: 11px;
-    }
-
-    .hierarchy-row .hierarchy-toggle:disabled {
-      opacity: 0.25;
     }
 
     .hierarchy-row .object-item {
@@ -448,48 +406,28 @@
       font-size: 12px;
     }
 
-    .hierarchy-row .object-item:hover {
-      background: var(--panel-hover);
-    }
-
     .hierarchy-row .object-item.selected {
       background: #604b91;
       border-color: var(--accent-light);
     }
 
-    .hierarchy-row .visibility-container {
-      flex: 0 0 38px;
-      width: 38px;
-      min-width: 38px;
-      display: flex;
-    }
-
+    .hierarchy-row .visibility-container,
     .hierarchy-row .lock-container {
-      flex: 0 0 34px;
-      width: 34px;
-      min-width: 34px;
       display: flex;
+      flex: 0 0 36px;
+      width: 36px;
+      min-width: 36px;
     }
 
-    .hierarchy-row .visibility-container button {
-      width: 38px;
-      min-width: 38px;
-      height: 38px;
-      padding: 3px 1px;
-      margin: 0;
-      font-size: 11px;
-    }
-
+    .hierarchy-row .visibility-container button,
     .hierarchy-row .lock-container button {
-      width: 34px;
-      min-width: 34px;
+      width: 36px;
+      min-width: 36px;
       height: 38px;
       padding: 3px 1px;
       margin: 0;
-      font-size: 13px;
+      font-size: 12px;
     }
-
-    /* 親子関係の操作パネル */
 
     .hierarchy-controls {
       display: flex;
@@ -525,136 +463,87 @@
 
     .hierarchy-controls button {
       width: 100%;
-      padding: 9px;
       margin: 0;
       color: white;
       background: #493b70;
       border: 1px solid #7964a8;
-      border-radius: 7px;
     }
 
-    /* スマートフォン */
+    /* メッシュツールバー */
+
+    #meshToolbarContainer {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    #meshToolbarContainer > * {
+      pointer-events: auto;
+    }
+
+    /* 小さな画面 */
 
     @media (max-width: 750px) {
+      :root {
+        --header-height: 48px;
+        --properties-width: 190px;
+      }
+
       header {
-        height: 50px;
-        padding: 0 10px;
+        padding: 0 9px;
       }
 
       .logo {
-        font-size: 12px;
-        letter-spacing: 1px;
+        font-size: 11px;
+        letter-spacing: .8px;
       }
 
       header a {
-        font-size: 12px;
-        padding: 8px;
-      }
-
-      .editor {
-        --sidebar-width: 165px;
-
-        grid-template-columns:
-          var(--sidebar-width)
-          10px
-          minmax(0, 1fr);
-
-        grid-template-rows:
-          minmax(0, 1fr)
-          210px;
-
-        height: calc(100dvh - 50px);
+        font-size: 11px;
+        padding: 7px;
       }
 
       .sidebar {
-        grid-column: 1;
-        grid-row: 1;
+        width: min(220px, calc(100vw - 24px));
+        top: 8px;
+        bottom: 8px;
+        left: 8px;
         padding: 10px 8px;
       }
 
-      .viewport {
-        grid-column: 3;
-        grid-row: 1;
+      .panel-toggle {
+        top: 9px;
+        left: 9px;
       }
 
       .properties {
-        grid-column: 1 / 4;
-        grid-row: 2;
-        border-left: none;
-        border-top: 1px solid var(--border);
-        padding: 8px 12px;
-      }
-
-      .sidebar-resizer {
-        grid-column: 2;
-        grid-row: 1;
+        padding: 8px;
       }
 
       .properties-header {
-        margin-bottom: 6px;
+        gap: 5px;
+        flex-wrap: wrap;
       }
 
       .properties-header h3 {
-        margin: 4px 0;
-      }
-
-      .properties.collapsed {
-        padding: 5px 10px;
-      }
-
-      .properties.collapsed .properties-header {
-        flex-direction: row;
-        justify-content: space-between;
-        gap: 8px;
-      }
-
-      .properties.collapsed .properties-header h3 {
-        writing-mode: horizontal-tb;
-        margin: 5px 0;
-        letter-spacing: 0;
-      }
-
-      .properties.collapsed #togglePropertiesButton {
-        width: auto;
-        min-width: 88px;
-        min-height: 36px;
-        padding: 5px 10px;
-        writing-mode: horizontal-tb;
-      }
-
-      .editor.properties-collapsed {
-        grid-template-rows:
-          minmax(0, 1fr)
-          48px;
-      }
-
-      .properties-inner {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px 12px;
-      }
-
-      .property-group {
-        padding: 6px 0;
-      }
-
-      .sidebar h3 {
         font-size: 11px;
-        margin: 15px 0 8px;
       }
 
-      .sidebar button {
-        min-height: 42px;
-        font-size: 11px;
-        padding: 8px 4px;
-      }
-
-      .history-buttons button {
+      #togglePropertiesButton {
+        min-width: 65px;
         font-size: 10px;
       }
 
-      .hierarchy-row {
-        gap: 3px;
+      .property-row {
+        grid-template-columns: 19px minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .property-row input {
+        padding: 8px 3px;
+        font-size: 13px;
       }
 
       .hierarchy-row .object-item {
@@ -662,44 +551,83 @@
         padding: 8px 3px;
       }
 
-      #meshToolbarContainer {
-        left: 5px;
-        right: 5px;
-        bottom: 5px;
-        max-height: 55%;
+      .hierarchy-row .visibility-container,
+      .hierarchy-row .lock-container {
+        flex-basis: 30px;
+        width: 30px;
+        min-width: 30px;
       }
 
-      #meshToolbarContainer .mesh-toolbar {
-        padding: 7px;
-        gap: 6px;
-      }
-
-      #meshToolbarContainer .mesh-toolbar button {
-        min-height: 44px;
-        padding: 4px 2px;
-        font-size: 11px;
+      .hierarchy-row .visibility-container button,
+      .hierarchy-row .lock-container button {
+        width: 30px;
+        min-width: 30px;
+        font-size: 10px;
       }
     }
 
-    @media (max-width: 380px) {
-      .editor {
-        --sidebar-width: 145px;
+    @media (max-width: 520px) {
+      :root {
+        --properties-width: 150px;
       }
 
-      .sidebar {
-        padding-left: 6px;
-        padding-right: 6px;
+      .properties {
+        padding: 7px 5px;
       }
 
-      .hierarchy-row .visibility-container {
-        flex-basis: 34px;
-        width: 34px;
-        min-width: 34px;
+      .properties-header {
+        flex-direction: column;
+        align-items: stretch;
       }
 
-      .hierarchy-row .visibility-container button {
-        width: 34px;
-        min-width: 34px;
+      .properties-header h3 {
+        font-size: 10px;
+      }
+
+      #togglePropertiesButton {
+        width: 100%;
+        min-height: 34px;
+      }
+
+      .properties.collapsed .properties-header {
+        align-items: center;
+      }
+
+      .properties.collapsed #togglePropertiesButton {
+        width: 38px;
+      }
+
+      .property-row {
+        grid-template-columns: 16px minmax(0, 1fr);
+        gap: 3px;
+      }
+
+      .property-row label {
+        font-size: 10px;
+      }
+
+      .property-row input {
+        font-size: 12px;
+      }
+
+      .property-group {
+        padding: 7px 0;
+      }
+
+      .panel-toggle {
+        width: 44px;
+        height: 44px;
+        min-height: 44px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      :root {
+        --properties-width: 128px;
+      }
+
+      .properties {
+        padding: 6px 4px;
       }
     }
   </style>
@@ -714,9 +642,13 @@
 
 <main class="editor">
 
-  <!-- 左側ツールパネル -->
+  <div class="viewport">
+    <div class="viewport-label">3D VIEWPORT</div>
+    <canvas id="threeCanvas"></canvas>
+    <div id="meshToolbarContainer"></div>
+  </div>
 
-  <aside class="sidebar">
+  <aside class="sidebar" id="leftSidebar">
 
     <h3>オブジェクト追加</h3>
     <button id="addCube">＋ キューブ</button>
@@ -747,30 +679,17 @@
     <div id="hierarchyList"></div>
 
     <div id="hierarchyControls"></div>
-
   </aside>
 
-  <!-- 左右の幅調整 -->
+  <button
+    id="toggleSidebarButton"
+    class="panel-toggle"
+    type="button"
+    aria-label="操作パネルを開く"
+    aria-expanded="false"
+  >☰</button>
 
-  <div
-    id="sidebarResizer"
-    class="sidebar-resizer"
-    aria-label="サイドバー幅の調整"
-  ></div>
-
-  <!-- 3D画面 -->
-
-  <div class="viewport">
-    <div class="viewport-label">3D VIEWPORT</div>
-
-    <canvas id="threeCanvas"></canvas>
-
-    <div id="meshToolbarContainer"></div>
-  </div>
-
-  <!-- オブジェクトプロパティ -->
-
-  <aside class="sidebar properties">
+  <aside class="sidebar properties" id="propertiesPanel">
 
     <div class="properties-header">
       <h3>オブジェクトプロパティ</h3>
@@ -779,9 +698,7 @@
         id="togglePropertiesButton"
         type="button"
         aria-expanded="true"
-      >
-        ▾ 仕舞う
-      </button>
+      >▾ 仕舞う</button>
     </div>
 
     <div id="propertyPanel">
@@ -794,12 +711,43 @@
 
 </main>
 
-<!-- プロパティ欄の開閉 -->
+<script>
+(() => {
+  const sidebar = document.querySelector("#leftSidebar");
+  const button = document.querySelector("#toggleSidebarButton");
+
+  if (!sidebar || !button) return;
+
+  button.addEventListener("click", () => {
+    const opened = sidebar.classList.toggle("open");
+
+    button.textContent = opened ? "×" : "☰";
+    button.setAttribute("aria-expanded", String(opened));
+    button.setAttribute(
+      "aria-label",
+      opened ? "操作パネルを閉じる" : "操作パネルを開く"
+    );
+  });
+
+  document.addEventListener("pointerdown", event => {
+    if (
+      sidebar.classList.contains("open") &&
+      !sidebar.contains(event.target) &&
+      !button.contains(event.target)
+    ) {
+      sidebar.classList.remove("open");
+      button.textContent = "☰";
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-label", "操作パネルを開く");
+    }
+  });
+})();
+</script>
 
 <script>
 (() => {
   const editor = document.querySelector(".editor");
-  const properties = document.querySelector(".properties");
+  const properties = document.querySelector("#propertiesPanel");
   const button = document.querySelector("#togglePropertiesButton");
 
   if (!editor || !properties || !button) return;
@@ -809,105 +757,20 @@
 
     editor.classList.toggle("properties-collapsed", collapsed);
 
-    button.textContent = collapsed
-      ? "▴ 開く"
-      : "▾ 仕舞う";
-
-    button.setAttribute(
-      "aria-expanded",
-      String(!collapsed)
-    );
+    button.textContent = collapsed ? "▴ 開く" : "▾ 仕舞う";
+    button.setAttribute("aria-expanded", String(!collapsed));
 
     window.dispatchEvent(new Event("resize"));
   });
 })();
 </script>
-
-<!-- 左サイドバーの幅調整 -->
-
-<script>
-(() => {
-  const editor = document.querySelector(".editor");
-  const resizer = document.querySelector("#sidebarResizer");
-
-  if (!editor || !resizer) return;
-
-  let resizing = false;
-
-  function getLimits() {
-    const mobile = window.matchMedia("(max-width: 750px)").matches;
-    const width = editor.getBoundingClientRect().width;
-
-    return mobile
-      ? {
-          min: 120,
-          max: Math.max(120, Math.min(260, width - 100))
-        }
-      : {
-          min: 180,
-          max: Math.max(180, Math.min(360, width - 430))
-        };
-  }
-
-  resizer.addEventListener("pointerdown", event => {
-    resizing = true;
-    resizer.setPointerCapture(event.pointerId);
-    event.preventDefault();
-  });
-
-  resizer.addEventListener("pointermove", event => {
-    if (!resizing) return;
-
-    const rect = editor.getBoundingClientRect();
-    const limits = getLimits();
-
-    const newWidth = Math.max(
-      limits.min,
-      Math.min(limits.max, event.clientX - rect.left)
-    );
-
-    editor.style.setProperty(
-      "--sidebar-width",
-      newWidth + "px"
-    );
-
-    window.dispatchEvent(new Event("resize"));
-  });
-
-  function stopResizing() {
-    resizing = false;
-  }
-
-  resizer.addEventListener("pointerup", stopResizing);
-  resizer.addEventListener("pointercancel", stopResizing);
-
-  window.addEventListener("resize", () => {
-    if (resizing) return;
-
-    const limits = getLimits();
-
-    const current = parseFloat(
-      getComputedStyle(editor).getPropertyValue("--sidebar-width")
-    );
-
-    if (current > limits.max) {
-      editor.style.setProperty(
-        "--sidebar-width",
-        limits.max + "px"
-      );
-    }
-  });
-})();
-</script>
-
-<!-- エラー表示 -->
 
 <script>
 window.addEventListener("error", event => {
   const message = document.createElement("pre");
 
   message.style.cssText =
-    "position:fixed;z-index:9999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
+    "position:fixed;z-index:99999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
 
   message.textContent =
     "JavaScript Error:\n" +
@@ -924,7 +787,7 @@ window.addEventListener("unhandledrejection", event => {
   const message = document.createElement("pre");
 
   message.style.cssText =
-    "position:fixed;z-index:9999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
+    "position:fixed;z-index:99999;top:10px;left:10px;right:10px;padding:12px;background:#500;color:white;white-space:pre-wrap;font-size:12px;";
 
   message.textContent =
     "Promise Error:\n" + String(event.reason);
@@ -933,9 +796,7 @@ window.addEventListener("unhandledrejection", event => {
 });
 </script>
 
-<!-- 3Dエディター本体 -->
-
-<script type="module" src="./main.js?v=9"></script>
+<script type="module" src="./main.js?v=10"></script>
 
 </body>
 </html>
