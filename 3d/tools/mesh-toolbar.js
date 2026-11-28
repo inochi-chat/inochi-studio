@@ -16,10 +16,10 @@ export function createMeshToolbar({
     .mesh-toolbar-root {
       position: fixed;
       z-index: 10000;
-      top: 12px;
+      top: max(70px, env(safe-area-inset-top, 0px) + 55px);
       right: 12px;
       font-family: sans-serif;
-    }
+  }
 
     .mesh-toolbar-toggle {
       width: 50px;
