@@ -55,13 +55,6 @@ import {
 
 import { createDuplicateButton } from "./objects/duplicate-button.js";
 
-import {
-  createGroupCommand,
-  createUngroupCommand,
-  createRenameGroupCommand,
-  createDeleteGroupCommand
-} from "./history/group-commands.js";
-
 // メッシュ編集
 import { createMeshEditor } from "./tools/mesh-editor.js";
 import { createMeshOperations } from "./tools/mesh-operations.js";
@@ -291,7 +284,6 @@ function rebuildMeshTools() {
     meshEditor,
 
     onSelectionChange(selection) {
-      // 頂点・辺・面の選択を頂点選択へ変換
       const vertexIds = new Set();
 
       for (const id of selection.vertices) {
@@ -627,7 +619,8 @@ function runMeshAction(action) {
     return;
   }
 
-      if (action.startsWith("extrude:")) {
+  // 数値入力された距離で押し出し
+  if (action.startsWith("extrude:")) {
     if (selection.faces.length === 0) {
       alert("押し出す面を選択してください。");
       return;
@@ -645,6 +638,7 @@ function runMeshAction(action) {
     return;
   }
 
+  // 距離指定がない場合の標準押し出し
   if (action === "extrude") {
     if (selection.faces.length === 0) {
       alert("押し出す面を選択してください。");
@@ -656,8 +650,10 @@ function runMeshAction(action) {
     return;
   }
 
+  if (action === "delete") {
     meshHistory.save();
     meshEditCommands.deleteSelection();
+    return;
   }
 }
 
