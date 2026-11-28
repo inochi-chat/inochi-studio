@@ -18,11 +18,7 @@ import { createRotationEditor } from "./properties/rotation.js";
 import { createScaleEditor } from "./properties/scale.js";
 import { createColorEditor } from "./properties/color.js";
 
-import { createObjectSelection } from "./selection/object-selection.js";
-import { createMultiSelection } from "./selection/multi-selection.js";
-import { createMultiSelectionVisual } from "./selection/multi-selection-visual.js";
-import { createMultiSelectionController } from "./selection/multi-selection-controller.js";
-import { createMultiSelectionMode } from "./selection/multi-selection-mode.js";
+import { createSelectionSystem } from "./app/selection-controller.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 import { createHistoryManager } from "./history/history-manager.js";
@@ -85,20 +81,12 @@ const history = createHistoryManager(100);
 
 let meshEditing = false;
 
-// =====================================================
-// 4. 複数選択システム
-// =====================================================
-
-const multiSelection = createMultiSelection();
-const multiSelectionVisual = createMultiSelectionVisual();
-const multiSelectionMode = createMultiSelectionMode();
-
 function getSelectedObject() {
   return objectManager.getSelected();
 }
 
 // =====================================================
-// 5. ロック確認
+// 4. ロック確認
 // =====================================================
 
 function isObjectEffectivelyLocked(object) {
@@ -123,7 +111,7 @@ function isObjectEffectivelyLocked(object) {
 }
 
 // =====================================================
-// 6. UI更新
+// 5. UI更新
 // =====================================================
 
 let objectListView;
@@ -149,7 +137,7 @@ function refreshEditorUI() {
 }
 
 // =====================================================
-// 7. カメラ操作
+// 6. カメラ操作
 // =====================================================
 
 const orbit = new OrbitControls(camera, renderer.domElement);
@@ -157,7 +145,7 @@ orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 
 // =====================================================
-// 8. 変形ツール
+// 7. 変形ツール
 // =====================================================
 
 const transform = createTransformTool(
@@ -172,6 +160,27 @@ const transform = createTransformTool(
 transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
+
+// =====================================================
+// 8. 選択システム
+// =====================================================
+
+const selectionSystem = createSelectionSystem({
+  objectManager,
+  objectLock,
+
+  onChange(selectedObjects) {
+    selectPrimaryObject(
+      selectedObjects[0] ?? null,
+      selectedObjects
+    );
+  }
+});
+
+const multiSelection = selectionSystem.multiSelection;
+const multiSelectionVisual = selectionSystem.visual;
+const multiSelectionMode = selectionSystem.mode;
+const multiSelectionController = selectionSystem.controller;
 
 // =====================================================
 // 9. メッシュ編集システム
@@ -454,25 +463,7 @@ function selectPrimaryObject(object, selectedObjects = null) {
 }
 
 // =====================================================
-// 15. 複数選択の管理
-// =====================================================
-
-const multiSelectionController = createMultiSelectionController({
-  multiSelection,
-  visual: multiSelectionVisual,
-  objectManager,
-  objectLock,
-
-  onChange(selectedObjects) {
-    selectPrimaryObject(
-      selectedObjects[0] ?? null,
-      selectedObjects
-    );
-  }
-});
-
-// =====================================================
-// 16. 通常の単体選択
+// 15. 通常の単体選択
 // =====================================================
 
 function selectObject(object) {
@@ -488,7 +479,7 @@ function selectObject(object) {
 }
 
 // =====================================================
-// 17. オブジェクト一覧
+// 16. オブジェクト一覧
 // =====================================================
 
 objectListView = createObjectList(
@@ -497,7 +488,7 @@ objectListView = createObjectList(
 );
 
 // =====================================================
-// 18. グループ選択
+// 17. グループ選択
 // =====================================================
 
 function selectGroup(group) {
@@ -514,7 +505,7 @@ function selectGroup(group) {
 }
 
 // =====================================================
-// 19. グループ名変更
+// 18. グループ名変更
 // =====================================================
 
 function renameGroup(group, newName) {
@@ -536,7 +527,7 @@ function renameGroup(group, newName) {
 }
 
 // =====================================================
-// 20. 階層操作モジュール
+// 19. 階層操作モジュール
 // =====================================================
 
 const hierarchyActions = createHierarchyActions({
@@ -555,7 +546,7 @@ const hierarchyActions = createHierarchyActions({
 });
 
 // =====================================================
-// 21. 階層UI
+// 20. 階層UI
 // =====================================================
 
 hierarchyUI = createHierarchyUI({
@@ -581,7 +572,7 @@ hierarchyUI = createHierarchyUI({
 });
 
 // =====================================================
-// 22. 履歴変更時
+// 21. 履歴変更時
 // =====================================================
 
 function onHistoryChange(object) {
@@ -592,7 +583,7 @@ function onHistoryChange(object) {
 }
 
 // =====================================================
-// 23. オブジェクト操作モジュール
+// 22. オブジェクト操作モジュール
 // =====================================================
 
 const objectActions = createObjectActions({
@@ -618,7 +609,7 @@ const objectActions = createObjectActions({
 });
 
 // =====================================================
-// 24. メッシュ操作モジュール
+// 23. メッシュ操作モジュール
 // =====================================================
 
 const meshActions = createMeshActions({
@@ -635,7 +626,7 @@ const meshActions = createMeshActions({
 });
 
 // =====================================================
-// 25. グループ操作ボタン
+// 24. グループ操作ボタン
 // =====================================================
 
 document
@@ -653,7 +644,7 @@ document
   );
 
 // =====================================================
-// 26. 複数選択モード
+// 25. 複数選択モード
 // =====================================================
 
 function updateMultiSelectionButton() {
@@ -688,7 +679,7 @@ multiSelectionButton?.addEventListener("click", () => {
 updateMultiSelectionButton();
 
 // =====================================================
-// 27. Undo・Redo
+// 26. Undo・Redo
 // =====================================================
 
 function undo() {
@@ -710,17 +701,13 @@ function redo() {
 }
 
 // =====================================================
-// 28. 3D画面からの通常選択
+// 27. 3D画面からの通常選択
 // =====================================================
 
-const objectSelection = createObjectSelection({
+const objectSelection = selectionSystem.createObjectPicker({
   camera,
   renderer,
-  objectManager,
   transform,
-  objectLock,
-  multiSelectionController,
-  multiSelectionMode,
   onSelect: selectObject,
 
   isEnabled() {
@@ -729,7 +716,7 @@ const objectSelection = createObjectSelection({
 });
 
 // =====================================================
-// 29. ボタン接続
+// 28. ボタン接続
 // =====================================================
 
 document.querySelector("#addCube")
@@ -769,7 +756,7 @@ document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
 // =====================================================
-// 30. キーボードショートカット
+// 29. キーボードショートカット
 // =====================================================
 
 document.addEventListener("keydown", event => {
@@ -802,7 +789,7 @@ document.addEventListener("keydown", event => {
 });
 
 // =====================================================
-// 31. 初期キューブ
+// 30. 初期キューブ
 // =====================================================
 
 const initialCubeGeometry = createGeometry("cube");
@@ -817,7 +804,7 @@ if (initialCube) {
 }
 
 // =====================================================
-// 32. 描画ループ
+// 31. 描画ループ
 // =====================================================
 
 function animate() {
