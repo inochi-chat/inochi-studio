@@ -605,9 +605,40 @@ export function createMeshToolbar({
     onAction?.(`transform:${transformMode}:${values.join(",")}`);
   }
 
-  
   // スカルプト設定
   const sculptContent = createSection("sculpt", "🎨 スカルプト");
+
+  let sculptEnabled = false;
+  let sculptMode = "pushpull";
+
+  const sculptModeButton = createButton(
+    sculptContent,
+    "ブラシモード：OFF",
+    null,
+    {
+      callback: () => setSculptEnabled(!sculptEnabled)
+    }
+  );
+
+  function setSculptEnabled(value) {
+    sculptEnabled = Boolean(value);
+
+    sculptModeButton.textContent = sculptEnabled
+      ? "ブラシモード：ON"
+      : "ブラシモード：OFF";
+
+    sculptModeButton.classList.toggle("active", sculptEnabled);
+    sculptModeButton.setAttribute(
+      "aria-pressed",
+      String(sculptEnabled)
+    );
+
+    statusElement.textContent = sculptEnabled
+      ? "スカルプトブラシでモデルをなぞれます"
+      : `${currentMode.toUpperCase()} モード`;
+
+    onSculptModeChange?.(sculptEnabled, sculptMode);
+  }
 
   const sculptPanel = document.createElement("div");
   sculptPanel.className = "mesh-transform-panel";
@@ -649,59 +680,57 @@ export function createMeshToolbar({
     1
   );
 
-  function applySculpt(mode) {
-    const radius = Number(sculptRadiusInput.value);
-    const strength = Number(sculptStrengthInput.value);
+  const sculptButtons = {};
 
-    if (
-      !Number.isFinite(radius) ||
-      !Number.isFinite(strength) ||
-      radius <= 0
-    ) {
-      statusElement.textContent =
-        "ブラシサイズと強さを正しく入力してください";
-      return;
+  function setSculptMode(mode) {
+    if (!["pushpull", "smooth", "inflate"].includes(mode)) return;
+
+    sculptMode = mode;
+
+    for (const [key, button] of Object.entries(sculptButtons)) {
+      button.classList.toggle("active", key === mode);
     }
 
-    onAction?.(`sculpt:${mode}:${radius}:${strength}`);
+    statusElement.textContent =
+      `スカルプト：${mode}`;
+
+    onSculptModeChange?.(sculptEnabled, sculptMode);
   }
 
-  createButton(
+  sculptButtons.pushpull = createButton(
     sculptPanel,
     "↗ 押し出し・へこませる",
     null,
     {
-      className: "primary",
-      callback: () => applySculpt("pushpull")
+      callback: () => setSculptMode("pushpull")
     }
   );
 
-  createButton(
+  sculptButtons.smooth = createButton(
     sculptPanel,
     "〰 なめらか化",
     null,
     {
-      callback: () => applySculpt("smooth")
+      callback: () => setSculptMode("smooth")
     }
   );
 
-  createButton(
+  sculptButtons.inflate = createButton(
     sculptPanel,
     "◉ 膨らませる",
     null,
     {
-      callback: () => applySculpt("inflate")
+      callback: () => setSculptMode("inflate")
     }
   );
 
   const sculptHint = document.createElement("div");
   sculptHint.className = "mesh-transform-hint";
   sculptHint.textContent =
-    "頂点を選択してから実行。左右対称編集にも対応。";
+    "ブラシモードをONにして、モデルの表面を指でなぞります。";
 
   sculptPanel.appendChild(sculptHint);
   sculptContent.appendChild(sculptPanel);
-
   
   // メッシュ編集
   const editContent = createSection("edit", "✂ メッシュ編集");
