@@ -14,12 +14,13 @@ export function createMeshToolbar({
 
   style.textContent = `
     .mesh-toolbar-root {
-      position: fixed;
-      z-index: 10000;
-      top: max(70px, env(safe-area-inset-top, 0px) + 55px);
-      right: 12px;
-      font-family: sans-serif;
+     position: fixed;
+     z-index: 10000;
+     top: 140px;
+     right: 16px;
+     font-family: sans-serif;
   }
+
 
     .mesh-toolbar-toggle {
       width: 50px;
