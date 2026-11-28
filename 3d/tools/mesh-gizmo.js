@@ -57,6 +57,8 @@ export function createMeshGizmo({
 
   group.visible = false;
 
+  let gizmoEnabled = true;
+
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
@@ -130,7 +132,17 @@ export function createMeshGizmo({
       );
     }
 
-    group.visible = true;
+    group.visible = gizmoEnabled;
+  }
+
+  function setVisible(value) {
+    gizmoEnabled = Boolean(value);
+
+    if (!gizmoEnabled && dragging) {
+      finishDrag();
+    }
+
+    group.visible = gizmoEnabled && selectedIds.length > 0;
   }
 
   function getPointer(event) {
@@ -195,7 +207,13 @@ export function createMeshGizmo({
   }
 
   function onPointerDown(event) {
-    if (!group.visible || !operations || !meshEditor || !meshHistory) {
+    if (
+      !gizmoEnabled ||
+      !group.visible ||
+      !operations ||
+      !meshEditor ||
+      !meshHistory
+    ) {
       return;
     }
 
@@ -355,6 +373,7 @@ export function createMeshGizmo({
 
   return {
     update,
+    setVisible,
     dispose
   };
 }
