@@ -1,6 +1,6 @@
 
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-
+import { createGeometry } from "./objects/object-factory.js";
 import { initializeEditor } from "./core/editor-init.js";
 
 import { createObjectManager } from "./objects/object-manager.js";
