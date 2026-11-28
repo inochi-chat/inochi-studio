@@ -3,7 +3,6 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { initializeEditor } from "./core/editor-init.js";
 
-import { createGeometry } from "./objects/object-factory.js";
 import { createObjectManager } from "./objects/object-manager.js";
 import { createObjectList } from "./objects/object-list.js";
 import { createHierarchyUI } from "./objects/hierarchy-ui.js";
@@ -13,7 +12,6 @@ import { createObjectVisibility } from "./objects/object-visibility.js";
 import { createObjectLock } from "./objects/object-lock.js";
 import { createObjectGroup } from "./objects/object-group.js";
 import { createDuplicateButton } from "./objects/duplicate-button.js";
-import { createObjectActions } from "./app/object-actions.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -28,15 +26,8 @@ import { createMultiSelectionController } from "./selection/multi-selection-cont
 import { createMultiSelectionMode } from "./selection/multi-selection-mode.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
-import { createHistoryManager } from "./history/history-manager.js";
 
-import {
-  createAddObjectCommand,
-  createDeleteObjectCommand,
-  createDeleteObjectsCommand,
-  createDuplicateObjectCommand,
-  createDuplicateObjectsCommand
-} from "./history/object-commands.js?v=4";
+import { createHistoryManager } from "./history/history-manager.js";
 
 import {
   createSetParentCommand,
@@ -51,20 +42,18 @@ import { createVisibilityCommand } from "./history/visibility-command.js";
 import { createLockCommand } from "./history/lock-command.js";
 
 import {
-  createGroupCommand,
-  createUngroupCommand,
-  createRenameGroupCommand,
-  createDeleteGroupCommand
+  createRenameGroupCommand
 } from "./history/group-commands.js";
 
 import { createMeshEditor } from "./tools/mesh-editor.js";
 import { createMeshOperations } from "./tools/mesh-operations.js";
+
 import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 
 import { createMeshSculptController } from "./app/mesh-sculpt.js";
 import { createMeshEditing } from "./app/mesh-editing.js";
-import { createMeshActionController } from "./app/mesh-actions.js";
-import { createMeshSettings } from "./app/mesh-settings.js";
+import { createMeshActions } from "./app/mesh-actions.js";
+import { createObjectActions } from "./app/object-actions.js";
 
 // =====================================================
 // 1. HTML要素
@@ -212,22 +201,30 @@ const meshEditor = createMeshEditor({
 });
 
 const meshOperations = createMeshOperations(meshEditor);
-const meshSettings = createMeshSettings();
+
+let meshSelectionMode = "vertex";
+let meshMultiSelect = false;
+
+let meshGizmoVisible = true;
+
+let meshSculptEnabled = false;
+let meshSculptMode = "pushpull";
+let meshSculptRadius = 0.5;
+let meshSculptStrength = 0.1;
 
 let meshEditingController = null;
 
+// メッシュ編集状態を取得
 function getMeshState() {
   return meshEditingController?.getState() ?? {};
 }
 
+// メッシュ編集用の再構築
 function rebuildMeshTools() {
   meshEditingController?.rebuild();
 }
 
-// -----------------------------------------------------
-// スカルプトコントローラー
-// -----------------------------------------------------
-
+// スカルプト処理
 const meshSculptController = createMeshSculptController({
   getOperations: () => meshOperations,
 
@@ -235,13 +232,13 @@ const meshSculptController = createMeshSculptController({
 
   isEditing: () => meshEditing,
 
-  isEnabled: () => meshSettings.getSculptSettings().enabled,
+  isEnabled: () => meshSculptEnabled,
 
-  getRadius: () => meshSettings.getSculptSettings().radius,
+  getRadius: () => meshSculptRadius,
 
-  getStrength: () => meshSettings.getSculptSettings().strength,
+  getStrength: () => meshSculptStrength,
 
-  getMode: () => meshSettings.getSculptSettings().mode,
+  getMode: () => meshSculptMode,
 
   onStrokeEnd(changed) {
     if (!changed) return;
@@ -257,10 +254,7 @@ const meshSculptController = createMeshSculptController({
   }
 });
 
-// -----------------------------------------------------
 // メッシュ編集管理モジュール
-// -----------------------------------------------------
-
 meshEditingController = createMeshEditing({
   scene,
   camera,
@@ -290,56 +284,39 @@ meshEditingController = createMeshEditing({
 
   container: meshToolbarContainer,
 
-  getSculptSettings: () => meshSettings.getSculptSettings(),
+  getSculptSettings: () => ({
+    enabled: meshSculptEnabled,
+    mode: meshSculptMode
+  }),
 
-  getSelectionSettings: () => meshSettings.getSelectionSettings(),
+  getSelectionSettings: () => ({
+    mode: meshSelectionMode,
+    multiSelect: meshMultiSelect
+  }),
 
-  getGizmoVisible: () => meshSettings.getGizmoVisible()
+  getGizmoVisible: () => meshGizmoVisible
 });
 
-// -----------------------------------------------------
 // メッシュ編集終了
-// -----------------------------------------------------
-
 function exitMeshEditMode() {
   if (!meshEditing) return;
 
   meshEditing = false;
+
   meshEditingController.exit();
 }
 
-// -----------------------------------------------------
 // メッシュ編集開始
-// -----------------------------------------------------
-
 function enterMeshEditMode() {
   if (meshEditing) return;
 
-  meshSettings.setSelectionMode("vertex");
-  meshSettings.setMultiSelect(false);
+  meshSelectionMode = "vertex";
+  meshMultiSelect = false;
 
   const success = meshEditingController.enter();
 
   meshEditing = success;
 }
-
-// -----------------------------------------------------
-// メッシュ操作コントローラー
-// -----------------------------------------------------
-
-const meshActionController = createMeshActionController({
-  getState: getMeshState,
-
-  getMeshEditor: () => meshEditor,
-
-  getMeshOperations: () => meshOperations,
-
-  isEditing: () => meshEditing,
-
-  rebuild: rebuildMeshTools,
-
-  exit: exitMeshEditMode
-});
 
 // =====================================================
 // 10. メッシュツールバー
@@ -349,38 +326,44 @@ const meshToolbar = createMeshToolbar({
   container: meshToolbarContainer,
 
   onModeChange(mode) {
-    meshSettings.setSelectionMode(mode);
+    meshSelectionMode = mode;
     meshEditingController.setSelectionMode(mode);
   },
 
   onMultiSelectChange(enabled) {
-    meshSettings.setMultiSelect(enabled);
+    meshMultiSelect = enabled;
     meshEditingController.setMultiSelect(enabled);
   },
 
   onAction(action) {
-    meshActionController.handleAction(action);
+    meshActions.run(action);
   },
 
   onGizmoVisibilityChange(visible) {
-    meshSettings.setGizmoVisible(visible);
+    meshGizmoVisible = visible;
     meshEditingController.setGizmoVisible(visible);
   },
 
   onMirrorChange(enabled) {
-    meshSettings.setMirrorX(enabled);
     meshOperations.setMirrorX(enabled);
   },
 
   onSculptModeChange(enabled, mode, radius, strength) {
-    meshSettings.setSculptSettings(
-      enabled,
-      mode,
-      radius,
-      strength
-    );
+    meshSculptEnabled = enabled;
+    meshSculptMode = mode;
 
-    meshEditingController.setSculptMode(enabled, mode);
+    if (Number.isFinite(radius) && radius > 0) {
+      meshSculptRadius = radius;
+    }
+
+    if (Number.isFinite(strength)) {
+      meshSculptStrength = strength;
+    }
+
+    meshEditingController.setSculptMode(
+      meshSculptEnabled,
+      meshSculptMode
+    );
   }
 });
 
@@ -604,298 +587,68 @@ function onHistoryChange(object) {
 }
 
 // =====================================================
-// 20. オブジェクト追加
+// 20. オブジェクト操作モジュール
 // =====================================================
 
-function addObject(type) {
-  if (meshEditing) return;
-
-  const geometry = createGeometry(type);
-  if (!geometry) return;
-
-  const command = createAddObjectCommand(
-    objectManager,
-    geometry,
-    type,
-    onHistoryChange
-  );
-
-  history.execute(command);
-}
-
-function addCube() {
-  addObject("cube");
-}
-
-function addSphere() {
-  addObject("sphere");
-}
-
-function addCylinder() {
-  addObject("cylinder");
-}
-
-// =====================================================
-// 21. オブジェクト削除
-// =====================================================
-
-function deleteSelectedObject() {
-  if (meshEditing) return;
-
-  if (activeGroup && objectGroup.isGroup(activeGroup)) {
-    if (objectGroup.isGroupLocked(activeGroup)) {
-      alert("ロック中のグループは削除できません。先にロックを解除してください。");
-      return;
-    }
-
-    const targetGroup = activeGroup;
-
-    const command = createDeleteGroupCommand(
-      objectGroup,
-      objectManager,
-      targetGroup,
-      group => {
-        activeGroup = group;
-
-        if (group) {
-          transform.attach(group);
-        } else {
-          transform.detach();
-        }
-
-        refreshEditorUI();
-        refreshProperties();
-      }
-    );
-
-    transform.detach();
-    history.execute(command);
-    return;
-  }
-
-  const selectedObjects = multiSelection.getAll();
-
-  const targets = selectedObjects.length > 1
-    ? selectedObjects
-    : [getSelectedObject()].filter(Boolean);
-
-  if (targets.length === 0) return;
-
-  for (const object of targets) {
-    if (isObjectEffectivelyLocked(object)) {
-      alert("ロック中のオブジェクトが含まれているため削除できません。");
-      return;
-    }
-
-    if (hierarchy.hasChildren(object)) {
-      alert("子オブジェクトがあるものは、先に子オブジェクトを解除してください。");
-      return;
-    }
-  }
-
-  transform.detach();
-
-  const command = targets.length === 1
-    ? createDeleteObjectCommand(
-        objectManager,
-        targets[0],
-        onHistoryChange
-      )
-    : createDeleteObjectsCommand(
-        objectManager,
-        targets,
-        onHistoryChange
-      );
-
-  multiSelectionController.clear();
-  activeGroup = null;
-
-  history.execute(command);
-
-  refreshEditorUI();
-  refreshProperties();
-}
-
-// =====================================================
-// 22. オブジェクト複製
-// =====================================================
-
-function duplicateSelectedObject() {
-  if (meshEditing) return;
-
-  if (activeGroup && objectGroup.isGroup(activeGroup)) {
-    alert("グループの複製機能は現在準備中です。");
-    return;
-  }
-
-  const selectedObjects = multiSelection.getAll();
-
-  const targets = selectedObjects.length > 0
-    ? selectedObjects
-    : [getSelectedObject()].filter(Boolean);
-
-  if (targets.length === 0) return;
-
-  for (const object of targets) {
-    if (isObjectEffectivelyLocked(object)) {
-      alert("ロック中のオブジェクトが含まれているため複製できません。");
-      return;
-    }
-
-    if (hierarchy.hasChildren(object)) {
-      alert("子オブジェクトがあるものが含まれています。現在は複製できません。");
-      return;
-    }
-  }
-
-  const command = targets.length === 1
-    ? createDuplicateObjectCommand(
-        objectManager,
-        targets[0],
-        onHistoryChange
-      )
-    : createDuplicateObjectsCommand(
-        objectManager,
-        targets,
-        onHistoryChange
-      );
-
-  transform.detach();
-  multiSelectionController.clear();
-  activeGroup = null;
-
-  history.execute(command);
-
-  refreshEditorUI();
-  refreshProperties();
-}
-
-// =====================================================
-// 23. 複製ボタン
-// =====================================================
-
-createDuplicateButton({
-  button: document.querySelector("#duplicateObject"),
+const objectActions = createObjectActions({
+  objectManager,
+  objectGroup,
+  multiSelection,
+  multiSelectionController,
+  transform,
+  history,
+  hierarchy,
+  isObjectEffectivelyLocked,
+  isEditing: () => meshEditing,
   getSelectedObject,
-  onDuplicate: duplicateSelectedObject
+  getActiveGroup: () => activeGroup,
+
+  setActiveGroup(group) {
+    activeGroup = group;
+  },
+
+  onHistoryChange,
+  refreshEditorUI,
+  refreshProperties
 });
 
 // =====================================================
-// 24. グループ化
+// 21. メッシュ操作モジュール
 // =====================================================
 
-function groupSelectedObjects() {
-  if (meshEditing) return;
+const meshActions = createMeshActions({
+  meshEditor,
+  meshOperations,
 
-  if (activeGroup) {
-    alert("すでにグループが選択されています。");
-    return;
-  }
+  getMeshState,
 
-  const selectedObjects = multiSelection.getAll();
+  isEditing: () => meshEditing,
 
-  const targets = selectedObjects.length > 0
-    ? selectedObjects
-    : [getSelectedObject()].filter(Boolean);
+  rebuildMeshTools,
 
-  if (targets.length < 2) {
-    alert("グループ化するオブジェクトを2個以上選択してください。");
-    return;
-  }
-
-  for (const object of targets) {
-    if (isObjectEffectivelyLocked(object)) {
-      alert("ロック中のオブジェクトが含まれているためグループ化できません。");
-      return;
-    }
-
-    if (hierarchy.hasChildren(object)) {
-      alert("子オブジェクトがあるものは現在グループ化できません。");
-      return;
-    }
-  }
-
-  transform.detach();
-  multiSelectionController.clear();
-  activeGroup = null;
-
-  const command = createGroupCommand(
-    objectGroup,
-    targets,
-    group => {
-      activeGroup = group;
-
-      if (group) {
-        transform.attach(group);
-      } else {
-        transform.detach();
-      }
-
-      refreshEditorUI();
-      refreshProperties();
-    }
-  );
-
-  history.execute(command);
-}
+  exitMeshEditMode
+});
 
 // =====================================================
-// 25. グループ解除
-// =====================================================
-
-function ungroupSelectedObject() {
-  if (meshEditing) return;
-
-  if (!activeGroup || !objectGroup.isGroup(activeGroup)) {
-    alert("グループを選択してください。");
-    return;
-  }
-
-  if (objectGroup.isGroupLocked(activeGroup)) {
-    alert("ロック中のグループは解除できません。先にロックを解除してください。");
-    return;
-  }
-
-  const group = activeGroup;
-
-  transform.detach();
-
-  const command = createUngroupCommand(
-    objectGroup,
-    group,
-    result => {
-      activeGroup = result || null;
-
-      if (result) {
-        transform.attach(result);
-      } else {
-        transform.detach();
-      }
-
-      refreshEditorUI();
-      refreshProperties();
-    }
-  );
-
-  if (command) {
-    history.execute(command);
-  }
-}
-
-// =====================================================
-// 26. グループ操作ボタン
+// 22. グループ操作ボタン
 // =====================================================
 
 document
   .querySelector("#groupObjects")
-  ?.addEventListener("click", groupSelectedObjects);
+  ?.addEventListener(
+    "click",
+    objectActions.groupSelectedObjects
+  );
 
 document
   .querySelector("#ungroupObjects")
-  ?.addEventListener("click", ungroupSelectedObject);
+  ?.addEventListener(
+    "click",
+    objectActions.ungroupSelectedObject
+  );
 
 // =====================================================
-// 27. 親子関係の設定
+// 23. 親子関係の設定
 // =====================================================
 
 function setObjectParent(child, parent) {
@@ -930,7 +683,7 @@ function setObjectParent(child, parent) {
 }
 
 // =====================================================
-// 28. 親子関係の解除
+// 24. 親子関係の解除
 // =====================================================
 
 function removeObjectParent(child) {
@@ -956,7 +709,7 @@ function removeObjectParent(child) {
 }
 
 // =====================================================
-// 29. 階層の並び替え
+// 25. 階層の並び替え
 // =====================================================
 
 function moveHierarchyObject(object, target, position) {
@@ -997,7 +750,7 @@ function moveHierarchyObject(object, target, position) {
 }
 
 // =====================================================
-// 30. 表示・非表示の変更
+// 26. 表示・非表示の変更
 // =====================================================
 
 function handleVisibilityChange(object, newVisible) {
@@ -1016,7 +769,7 @@ function handleVisibilityChange(object, newVisible) {
 }
 
 // =====================================================
-// 31. ロック・ロック解除
+// 27. ロック・ロック解除
 // =====================================================
 
 function handleLockChange(object, newLocked) {
@@ -1050,7 +803,7 @@ function handleLockChange(object, newLocked) {
 }
 
 // =====================================================
-// 32. 複数選択モード
+// 28. 複数選択モード
 // =====================================================
 
 function updateMultiSelectionButton() {
@@ -1085,7 +838,7 @@ multiSelectionButton?.addEventListener("click", () => {
 updateMultiSelectionButton();
 
 // =====================================================
-// 33. Undo・Redo
+// 29. Undo・Redo
 // =====================================================
 
 function undo() {
@@ -1107,7 +860,7 @@ function redo() {
 }
 
 // =====================================================
-// 34. 3D画面からの通常選択
+// 30. 3D画面からの通常選択
 // =====================================================
 
 const objectSelection = createObjectSelection({
@@ -1126,17 +879,17 @@ const objectSelection = createObjectSelection({
 });
 
 // =====================================================
-// 35. ボタン接続
+// 31. ボタン接続
 // =====================================================
 
 document.querySelector("#addCube")
-  ?.addEventListener("click", addCube);
+  ?.addEventListener("click", objectActions.addCube);
 
 document.querySelector("#addSphere")
-  ?.addEventListener("click", addSphere);
+  ?.addEventListener("click", objectActions.addSphere);
 
 document.querySelector("#addCylinder")
-  ?.addEventListener("click", addCylinder);
+  ?.addEventListener("click", objectActions.addCylinder);
 
 document.querySelector("#moveTool")
   ?.addEventListener("click", () => {
@@ -1154,7 +907,10 @@ document.querySelector("#scaleTool")
   });
 
 document.querySelector("#deleteObject")
-  ?.addEventListener("click", deleteSelectedObject);
+  ?.addEventListener(
+    "click",
+    objectActions.deleteSelectedObject
+  );
 
 document.querySelector("#undoButton")
   ?.addEventListener("click", undo);
@@ -1163,7 +919,7 @@ document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
 // =====================================================
-// 36. キーボードショートカット
+// 32. キーボードショートカット
 // =====================================================
 
 document.addEventListener("keydown", event => {
@@ -1196,7 +952,7 @@ document.addEventListener("keydown", event => {
 });
 
 // =====================================================
-// 37. 初期キューブ
+// 33. 初期キューブ
 // =====================================================
 
 const initialCubeGeometry = createGeometry("cube");
@@ -1211,7 +967,7 @@ if (initialCube) {
 }
 
 // =====================================================
-// 38. 描画ループ
+// 34. 描画ループ
 // =====================================================
 
 function animate() {
