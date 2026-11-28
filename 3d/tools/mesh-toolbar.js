@@ -22,8 +22,11 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar-toggle {
-      width: 50px;
-      height: 50px;
+      width: 48px;
+      height: 48px;
+      min-height: 48px;
+      padding: 0;
+      margin: 0;
       border: 1px solid #7964a8;
       border-radius: 12px;
       background: #30284c;
@@ -36,23 +39,31 @@ export function createMeshToolbar({
 
     .mesh-toolbar {
       position: absolute;
-      top: 58px;
+      top: 56px;
       right: 0;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      width: min(330px, calc(100vw - 24px));
-      max-height: min(65dvh, 620px);
+      gap: 6px;
+
+      width: min(245px, calc(100vw - 110px));
+      max-width: 245px;
+      max-height: 48dvh;
+
       overflow-y: auto;
+      overflow-x: hidden;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       box-sizing: border-box;
-      padding: 9px;
-      background: #20232b;
+      padding: 7px;
+
+      background: rgba(32, 35, 43, .78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+
       color: #f4f5f7;
-      border: 1px solid #414653;
+      border: 1px solid rgba(120, 130, 150, .55);
       border-radius: 12px;
-      box-shadow: 0 8px 30px rgba(0,0,0,.55);
+      box-shadow: 0 6px 22px rgba(0,0,0,.38);
     }
 
     .mesh-toolbar[hidden] {
@@ -60,25 +71,27 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar-section {
-      border: 1px solid #414653;
+      border: 1px solid rgba(90, 100, 120, .65);
       border-radius: 9px;
       overflow: hidden;
-      background: #191d25;
+      background: rgba(25, 29, 37, .72);
     }
 
     .mesh-toolbar-heading {
       width: 100%;
-      min-height: 46px;
+      min-height: 42px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 13px;
+      padding: 8px 10px;
+      margin: 0;
       border: 0;
-      background: #303642;
+      background: rgba(48, 54, 66, .85);
       color: white;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
       text-align: left;
+      touch-action: manipulation;
     }
 
     .mesh-toolbar-arrow {
@@ -93,23 +106,24 @@ export function createMeshToolbar({
     .mesh-toolbar-content {
       display: none;
       flex-direction: column;
-      gap: 9px;
-      padding: 10px;
+      gap: 6px;
+      padding: 7px;
     }
 
     .mesh-toolbar-section.open .mesh-toolbar-content {
       display: flex;
     }
 
-    .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle) {
-      min-height: 44px;
-      min-width: 58px;
-      padding: 9px 12px;
+    .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle):not(.mesh-toolbar-close) {
+      min-height: 40px;
+      min-width: 0;
+      padding: 8px 10px;
+      margin: 0;
       border: 1px solid #50596b;
       border-radius: 8px;
-      background: #303642;
+      background: rgba(48, 54, 66, .9);
       color: white;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       touch-action: manipulation;
     }
@@ -134,25 +148,26 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar-status {
-      font-size: 12px;
-      color: #aeb7c8;
+      font-size: 11px;
+      color: #c0c8d8;
       padding: 4px 2px;
+      line-height: 1.5;
     }
 
     .mesh-transform-panel {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      padding: 11px;
+      gap: 7px;
+      padding: 8px;
       border: 1px solid #414b5c;
       border-radius: 10px;
-      background: #191d25;
+      background: rgba(25, 29, 37, .8);
     }
 
     .mesh-transform-fields {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
     }
 
     .mesh-transform-field {
@@ -163,21 +178,21 @@ export function createMeshToolbar({
     }
 
     .mesh-transform-field label {
-      font-size: 12px;
+      font-size: 11px;
       color: #aeb7c8;
     }
 
     .mesh-transform-field input {
       width: 100%;
       min-width: 0;
-      height: 44px;
+      height: 38px;
       box-sizing: border-box;
-      padding: 7px;
+      padding: 5px;
       border: 1px solid #50596b;
       border-radius: 7px;
       background: #303642;
       color: white;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     .mesh-transform-apply {
@@ -187,18 +202,20 @@ export function createMeshToolbar({
     }
 
     .mesh-transform-hint {
-      font-size: 11px;
-      color: #8995a8;
+      font-size: 10px;
+      color: #aeb7c8;
       line-height: 1.5;
     }
 
     .mesh-toolbar-close {
       width: 100%;
-      min-height: 44px;
+      min-height: 40px;
+      margin: 0;
       border: 1px solid #596579;
       border-radius: 8px;
-      background: #394354;
+      background: rgba(57, 67, 84, .9);
       color: white;
+      font-size: 12px;
       font-weight: bold;
     }
 
@@ -209,18 +226,18 @@ export function createMeshToolbar({
       }
 
       .mesh-toolbar {
-        width: min(310px, calc(100vw - 20px));
-        max-height: 58dvh;
-        padding: 7px;
+        width: min(245px, calc(100vw - 110px));
+        max-width: 245px;
+        max-height: 48dvh;
       }
 
       .mesh-toolbar-heading {
-        min-height: 48px;
-        font-size: 14px;
+        min-height: 42px;
+        font-size: 12px;
       }
 
-      .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle) {
-        min-height: 46px;
+      .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle):not(.mesh-toolbar-close) {
+        min-height: 40px;
         font-size: 12px;
       }
     }
@@ -423,7 +440,14 @@ export function createMeshToolbar({
   hint.className = "mesh-transform-hint";
   hint.textContent = "移動は距離、回転は度数、拡大縮小は倍率。";
 
-  transformPanel.append(transformHeading, transformFields, applyButton, hint, status);
+  transformPanel.append(
+    transformHeading,
+    transformFields,
+    applyButton,
+    hint,
+    status
+  );
+
   transformContent.appendChild(transformPanel);
 
   let transformMode = "move";
