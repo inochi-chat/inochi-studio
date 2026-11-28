@@ -605,6 +605,104 @@ export function createMeshToolbar({
     onAction?.(`transform:${transformMode}:${values.join(",")}`);
   }
 
+  
+  // スカルプト設定
+  const sculptContent = createSection("sculpt", "🎨 スカルプト");
+
+  const sculptPanel = document.createElement("div");
+  sculptPanel.className = "mesh-transform-panel";
+
+  function createSculptInput(labelText, value, step, min, max) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "mesh-transform-field";
+
+    const label = document.createElement("label");
+    label.textContent = labelText;
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.value = String(value);
+    input.step = String(step);
+    input.min = String(min);
+    input.max = String(max);
+    input.inputMode = "decimal";
+
+    wrapper.append(label, input);
+    sculptPanel.appendChild(wrapper);
+
+    return input;
+  }
+
+  const sculptRadiusInput = createSculptInput(
+    "ブラシサイズ",
+    0.5,
+    0.05,
+    0.05,
+    5
+  );
+
+  const sculptStrengthInput = createSculptInput(
+    "ブラシの強さ",
+    0.1,
+    0.01,
+    -1,
+    1
+  );
+
+  function applySculpt(mode) {
+    const radius = Number(sculptRadiusInput.value);
+    const strength = Number(sculptStrengthInput.value);
+
+    if (
+      !Number.isFinite(radius) ||
+      !Number.isFinite(strength) ||
+      radius <= 0
+    ) {
+      statusElement.textContent =
+        "ブラシサイズと強さを正しく入力してください";
+      return;
+    }
+
+    onAction?.(`sculpt:${mode}:${radius}:${strength}`);
+  }
+
+  createButton(
+    sculptPanel,
+    "↗ 押し出し・へこませる",
+    null,
+    {
+      className: "primary",
+      callback: () => applySculpt("pushpull")
+    }
+  );
+
+  createButton(
+    sculptPanel,
+    "〰 なめらか化",
+    null,
+    {
+      callback: () => applySculpt("smooth")
+    }
+  );
+
+  createButton(
+    sculptPanel,
+    "◉ 膨らませる",
+    null,
+    {
+      callback: () => applySculpt("inflate")
+    }
+  );
+
+  const sculptHint = document.createElement("div");
+  sculptHint.className = "mesh-transform-hint";
+  sculptHint.textContent =
+    "頂点を選択してから実行。左右対称編集にも対応。";
+
+  sculptPanel.appendChild(sculptHint);
+  sculptContent.appendChild(sculptPanel);
+
+  
   // メッシュ編集
   const editContent = createSection("edit", "✂ メッシュ編集");
 
