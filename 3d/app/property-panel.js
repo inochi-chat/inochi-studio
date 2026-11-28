@@ -11,7 +11,8 @@ export function createPropertyPanel({
   isMeshEditing,
   isObjectEffectivelyLocked,
   onRefreshEditorUI,
-  onEnterMeshEditMode
+  onEnterMeshEditMode,
+  onMaterialChange
 }) {
   function refresh() {
     propertyPanel.innerHTML = "";
@@ -79,7 +80,9 @@ export function createPropertyPanel({
 
     inner.appendChild(createRotationEditor(object));
     inner.appendChild(createScaleEditor(object));
-    inner.appendChild(createColorEditor(object));
+    inner.appendChild(
+      createColorEditor(object, onMaterialChange)
+    );
 
     propertyPanel.appendChild(inner);
   }
