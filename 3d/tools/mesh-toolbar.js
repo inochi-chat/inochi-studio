@@ -249,6 +249,50 @@ export function createMeshToolbar({
       color: #aeb7c8;
       line-height: 1.5;
     }
+
+    .mesh-sculpt-slider {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 9px;
+      border: 1px solid #414b5c;
+      border-radius: 9px;
+      background: rgba(25, 29, 37, .8);
+    }
+
+    .mesh-sculpt-slider label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #e5e9f2;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .mesh-sculpt-slider output {
+      color: #a9c8ff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mesh-sculpt-slider input[type="range"] {
+      width: 100%;
+      height: 36px;
+      margin: 0;
+      accent-color: #a48be8;
+      touch-action: pan-y;
+    }
+
+    .mesh-sculpt-slider .slider-hint {
+      color: #aeb7c8;
+      font-size: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .mesh-sculpt-slider .strength-zero {
+      text-align: center;
+      color: #c0c8d8;
+    }
   `;
 
   document.head.appendChild(style);
@@ -596,42 +640,72 @@ export function createMeshToolbar({
   const sculptPanel = document.createElement("div");
   sculptPanel.className = "mesh-transform-panel";
 
-  function createSculptInput(labelText, value, step, min, max) {
+  function createSculptSlider(
+    labelText,
+    value,
+    min,
+    max,
+    step,
+    formatValue
+  ) {
     const wrapper = document.createElement("div");
-    wrapper.className = "mesh-transform-field";
+    wrapper.className = "mesh-sculpt-slider";
 
     const label = document.createElement("label");
-    label.textContent = labelText;
+    const name = document.createElement("span");
+    name.textContent = labelText;
+
+    const output = document.createElement("output");
+    output.textContent = formatValue(value);
+
+    label.append(name, output);
 
     const input = document.createElement("input");
-    input.type = "number";
-    input.value = String(value);
-    input.step = String(step);
+    input.type = "range";
     input.min = String(min);
     input.max = String(max);
-    input.inputMode = "decimal";
+    input.step = String(step);
+    input.value = String(value);
 
-    wrapper.append(label, input);
+    const hint = document.createElement("div");
+    hint.className = "slider-hint";
+
+    wrapper.append(label, input, hint);
     sculptPanel.appendChild(wrapper);
 
-    return input;
+    input.addEventListener("input", () => {
+      const currentValue = Number(input.value);
+      output.textContent = formatValue(currentValue);
+      notifySculptSettings();
+    });
+
+    return { input, output, hint };
   }
 
-  const sculptRadiusInput = createSculptInput(
+  const sculptRadiusSlider = createSculptSlider(
     "ブラシサイズ",
     0.5,
     0.05,
+    5,
     0.05,
-    5
+    value => value.toFixed(2)
   );
 
-  const sculptStrengthInput = createSculptInput(
+  sculptRadiusSlider.hint.textContent = "小さい ← → 大きい";
+
+  const sculptStrengthSlider = createSculptSlider(
     "ブラシの強さ",
     0.1,
-    0.01,
     -1,
-    1
+    1,
+    0.01,
+    value => value > 0
+      ? `+${value.toFixed(2)}`
+      : value.toFixed(2)
   );
+
+  sculptStrengthSlider.hint.textContent =
+    "へこむ ← 0 → 盛り上がる";
 
   const sculptButtons = {};
 
@@ -645,8 +719,8 @@ export function createMeshToolbar({
     onSculptModeChange?.(
       sculptEnabled,
       sculptMode,
-      Number(sculptRadiusInput.value),
-      Number(sculptStrengthInput.value)
+      Number(sculptRadiusSlider.input.value),
+      Number(sculptStrengthSlider.input.value)
     );
   }
 
@@ -700,9 +774,6 @@ export function createMeshToolbar({
     null,
     { callback: () => setSculptMode("inflate") }
   );
-
-  sculptRadiusInput.addEventListener("input", notifySculptSettings);
-  sculptStrengthInput.addEventListener("input", notifySculptSettings);
 
   const sculptHint = document.createElement("div");
   sculptHint.className = "mesh-transform-hint";
