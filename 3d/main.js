@@ -242,6 +242,9 @@ let activeMesh = null;
 let meshSelectionMode = "vertex";
 let meshMultiSelect = false;
 
+// ギズモ表示状態
+let meshGizmoVisible = true;
+
 
 // メッシュ編集用の選択・表示を再構築
 function rebuildMeshTools() {
@@ -263,19 +266,20 @@ function rebuildMeshTools() {
   });
 
   // XYZ移動ギズモを作成
-  
-meshGizmo = createMeshGizmo({
-  scene,
-  camera,
-  renderer,
-  mesh: activeMesh,
-  topology: meshTopology,
-  operations: meshOperations,
-  meshEditor,
-  meshHistory,
-  orbitControls: orbit
-});
+  meshGizmo = createMeshGizmo({
+    scene,
+    camera,
+    renderer,
+    mesh: activeMesh,
+    topology: meshTopology,
+    operations: meshOperations,
+    meshEditor,
+    meshHistory,
+    orbitControls: orbit
+  });
 
+  // 保存されている表示設定を反映
+  meshGizmo.setVisible(meshGizmoVisible);
 
   meshPicker = createMeshPicker({
     camera,
@@ -662,7 +666,10 @@ function runMeshAction(action) {
 }
 
 
+// =====================================================
 // メッシュツールバー
+// =====================================================
+
 const meshToolbar = createMeshToolbar({
   container: meshToolbarContainer,
 
@@ -678,6 +685,12 @@ const meshToolbar = createMeshToolbar({
 
   onAction(action) {
     runMeshAction(action);
+  },
+
+  // XYZギズモ表示・非表示
+  onGizmoVisibilityChange(visible) {
+    meshGizmoVisible = visible;
+    meshGizmo?.setVisible(visible);
   }
 });
 
