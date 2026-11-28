@@ -22,7 +22,7 @@ import { createMultiSelectionUI } from "./app/multi-selection-ui.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 import { createHistoryManager } from "./history/history-manager.js";
-
+import { createMaterialCommand } from "./history/material-command.js";
 import { createRenameGroupCommand } from "./history/group-commands.js";
 
 import { createMeshEditor } from "./tools/mesh-editor.js";
@@ -376,7 +376,21 @@ const propertyPanelController = createPropertyPanel({
 
   onRefreshEditorUI: refreshEditorUI,
 
-  onEnterMeshEditMode: enterMeshEditMode
+  onEnterMeshEditMode: enterMeshEditMode,
+
+  onMaterialChange(object, before, after) {
+    const command = createMaterialCommand(
+      object,
+      before,
+      after,
+      () => {
+        refreshEditorUI();
+        refreshProperties();
+      }
+    );
+
+    history.execute(command);
+  }
 });
 
 function refreshProperties() {
