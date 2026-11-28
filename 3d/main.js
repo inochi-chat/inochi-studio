@@ -627,7 +627,7 @@ function runMeshAction(action) {
     return;
   }
 
-    if (action.startsWith("extrude:")) {
+      if (action.startsWith("extrude:")) {
     if (selection.faces.length === 0) {
       alert("押し出す面を選択してください。");
       return;
