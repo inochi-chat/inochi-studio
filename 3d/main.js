@@ -63,7 +63,7 @@ import { createMeshVisuals } from "./tools/mesh-visuals.js";
 import { createMeshPicker } from "./tools/mesh-picker.js";
 import { createMeshEditCommands } from "./tools/mesh-edit-commands.js";
 import { createMeshHistory } from "./tools/mesh-history.js";
-import { createMeshToolbar } from "./tools/mesh-toolbar.js";
+import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 import { createMeshGizmo } from "./tools/mesh-gizmo.js";
 
 
