@@ -230,11 +230,12 @@ export function createMeshToolbar({
       cursor: pointer;
     }
 
-    @media (max-width: 600px) {
-      .mesh-toolbar-root {
-        top: 10px;
-        right: 10px;
-      }
+   @media (max-width: 600px) {
+   .mesh-toolbar-root {
+    top: max(70px, env(safe-area-inset-top, 0px) + 55px);
+    right: 10px;
+  }
+}
 
       .mesh-toolbar {
         width: min(320px, calc(100vw - 20px));
