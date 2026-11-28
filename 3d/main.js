@@ -17,6 +17,7 @@ import { createEditorUI } from "./app/editor-ui.js";
 import { createSelectionSystem } from "./app/selection-controller.js";
 import { createSelectionActions } from "./app/selection-actions.js";
 import { createHistoryActions } from "./app/history-actions.js";
+import { createGroupActions } from "./app/group-actions.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 import { createHistoryManager } from "./history/history-manager.js";
@@ -450,25 +451,18 @@ objectListView = createObjectList(
 );
 
 // =====================================================
-// 18. グループ名変更
+// 18. グループ操作モジュール
 // =====================================================
 
+const groupActions = createGroupActions({
+  objectGroup,
+  history,
+  refreshEditorUI,
+  isEditing: () => meshEditing
+});
+
 function renameGroup(group, newName) {
-  if (meshEditing) return;
-  if (!group || !objectGroup.isGroup(group)) return;
-
-  if (objectGroup.isGroupLocked(group)) {
-    alert("ロック中のグループ名は変更できません。");
-    return;
-  }
-
-  const command = createRenameGroupCommand(
-    group,
-    newName,
-    refreshEditorUI
-  );
-
-  history.execute(command);
+  groupActions.renameGroup(group, newName);
 }
 
 // =====================================================
