@@ -258,3 +258,25 @@ export function createMeshActionController({
     handleAction
   };
 }
+
+export function createMeshActions({
+  meshEditor,
+  meshOperations,
+  getMeshState,
+  isEditing,
+  rebuildMeshTools,
+  exitMeshEditMode
+}) {
+  const controller = createMeshActionController({
+    getState: getMeshState,
+    getMeshEditor: () => meshEditor,
+    getMeshOperations: () => meshOperations,
+    isEditing,
+    rebuild: rebuildMeshTools,
+    exit: exitMeshEditMode
+  });
+
+  return {
+    run: controller.handleAction
+  };
+}
