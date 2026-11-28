@@ -812,19 +812,34 @@ const meshToolbar = createMeshToolbar({
     runMeshAction(action);
   },
 
-    // XYZギズモ表示・非表示
+  // XYZギズモ表示・非表示
   onGizmoVisibilityChange(visible) {
     meshGizmoVisible = visible;
     meshGizmo?.setVisible(visible);
   },
 
-  // 左右対称編集 ON / OFF
+  // 左右対称編集
   onMirrorChange(enabled) {
     meshOperations.setMirrorX(enabled);
-  }
-  onSculptModeChange(enabled, mode) {
-  meshSculptEnabled = enabled;
-  meshSculptMode = mode;
+  },
+
+  // スカルプト設定
+  onSculptModeChange(enabled, mode, radius, strength) {
+    meshSculptEnabled = enabled;
+    meshSculptMode = mode;
+
+    if (Number.isFinite(radius) && radius > 0) {
+      meshSculptRadius = radius;
+    }
+
+    if (Number.isFinite(strength)) {
+      meshSculptStrength = strength;
+    }
+
+    meshPicker?.setSculptMode(
+      meshSculptEnabled,
+      meshSculptMode
+    );
   }
 });
 
