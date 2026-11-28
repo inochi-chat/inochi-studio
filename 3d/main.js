@@ -738,6 +738,10 @@ const meshToolbar = createMeshToolbar({
   onMirrorChange(enabled) {
     meshOperations.setMirrorX(enabled);
   }
+  onSculptModeChange(enabled, mode) {
+  meshSculptEnabled = enabled;
+  meshSculptMode = mode;
+  }
 });
 
 meshToolbar.setEditing(false);
