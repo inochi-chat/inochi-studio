@@ -362,12 +362,10 @@ export function createMeshOperations(meshEditor) {
       const amount = strength * influence;
 
       if (mode === "pushpull") {
-        // 表面の法線方向に押し出す・へこませる
         next.addScaledVector(record.normal, amount);
       }
 
       if (mode === "inflate") {
-        // 頂点ごとの法線方向に膨らませる
         next.addScaledVector(
           record.normal,
           Math.abs(strength) * influence
@@ -397,6 +395,111 @@ export function createMeshOperations(meshEditor) {
       }
 
       updates.push({ record, next });
+    }
+
+    if (updates.length === 0) return false;
+
+    const position = geometry.attributes.position;
+
+    for (const update of updates) {
+      for (const index of update.record.indices) {
+        position.setXYZ(
+          index,
+          update.next.x,
+          update.next.y,
+          update.next.z
+        );
+      }
+    }
+
+    finishGeometry(mesh);
+    return true;
+  }
+
+  // 引っ張りブラシ（Grab）
+  // delta は指を動かした方向と距離
+  function grabAt(
+    point,
+    delta,
+    radius = 0.5,
+    strength = 1
+  ) {
+    const context = getContext();
+
+    if (!context || !point || !delta) return false;
+
+    radius = Number(radius);
+    strength = Number(strength);
+
+    if (
+      !Number.isFinite(radius) ||
+      !Number.isFinite(strength) ||
+      radius <= 0 ||
+      strength === 0
+    ) {
+      return false;
+    }
+
+    const drag = delta.isVector3
+      ? delta.clone()
+      : new THREE.Vector3(delta.x, delta.y, delta.z);
+
+    if (drag.lengthSq() < 0.00000001) {
+      return false;
+    }
+
+    drag.multiplyScalar(strength);
+
+    const { mesh } = context;
+    const geometry = mesh.geometry;
+    const records = getUniqueRecords(mesh);
+
+    if (records.length === 0) return false;
+
+    const brushPoint = point.isVector3
+      ? point.clone()
+      : new THREE.Vector3(point.x, point.y, point.z);
+
+    const centers = getBrushCenters(brushPoint);
+    const original = records.map(record =>
+      record.position.clone()
+    );
+
+    const updates = [];
+
+    for (let i = 0; i < records.length; i++) {
+      const vertexPosition = original[i];
+
+      let nearestCenterIndex = 0;
+      let nearestDistance = vertexPosition.distanceTo(centers[0]);
+
+      for (let j = 1; j < centers.length; j++) {
+        const distance = vertexPosition.distanceTo(centers[j]);
+
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestCenterIndex = j;
+        }
+      }
+
+      const influence = brushFalloff(nearestDistance, radius);
+
+      if (influence <= 0) continue;
+
+      const offset = drag.clone();
+
+      // 反対側はX方向の移動を反転
+      if (mirrorXEnabled && nearestCenterIndex === 1) {
+        offset.x *= -1;
+      }
+
+      const next = vertexPosition.clone();
+      next.addScaledVector(offset, influence);
+
+      updates.push({
+        record: records[i],
+        next
+      });
     }
 
     if (updates.length === 0) return false;
@@ -468,6 +571,7 @@ export function createMeshOperations(meshEditor) {
     setMirrorX,
     isMirrorXEnabled,
     sculptAt,
+    grabAt,
     sculptPushPull,
     sculptSmooth,
     sculptInflate
