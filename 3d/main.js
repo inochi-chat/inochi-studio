@@ -68,6 +68,7 @@ import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 import { createMeshGizmo } from "./tools/mesh-gizmo.js";
 
 import { createMeshSculptController } from "./app/mesh-sculpt.js";
+import { createMeshEditing } from "./app/mesh-editing.js";
 
 // =====================================================
 // 1. HTML要素
