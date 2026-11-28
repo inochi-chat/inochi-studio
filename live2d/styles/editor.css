@@ -1,0 +1,480 @@
+
+/* =====================================
+   INOCHI STUDIO - LIVE2D EDITOR
+===================================== */
+
+.live2d-editor {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #11121a;
+  color: #e9e9f2;
+  font-family: Arial, "Noto Sans JP", sans-serif;
+}
+
+/* ヘッダー */
+
+.editor-header {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  background: #191a25;
+  border-bottom: 1px solid #30313e;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editor-logo {
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.editor-mode {
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: #5540a0;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.back-button {
+  color: #bda9ff;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.header-center {
+  color: #b9b9c8;
+  font-size: 13px;
+}
+
+.editor-header button,
+.editor-menu button,
+.canvas-controls button,
+.timeline-header button {
+  padding: 7px 12px;
+  border: 1px solid #393a49;
+  border-radius: 6px;
+  background: #252633;
+  color: #eeeef7;
+  cursor: pointer;
+}
+
+.editor-header button:hover,
+.editor-menu button:hover,
+.canvas-controls button:hover,
+.timeline-header button:hover {
+  background: #39334f;
+}
+
+/* メニュー */
+
+.editor-menu {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  background: #1d1e29;
+  border-bottom: 1px solid #30313e;
+}
+
+.editor-menu button {
+  padding: 5px 11px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+}
+
+/* メインレイアウト */
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(300px, 1fr) 260px;
+  height: calc(100vh - 58px - 36px - 190px);
+  min-height: 350px;
+}
+
+/* 左右パネル */
+
+.left-panel,
+.right-panel {
+  min-width: 0;
+  overflow-y: auto;
+  background: #191a25;
+}
+
+.left-panel {
+  border-right: 1px solid #30313e;
+}
+
+.right-panel {
+  border-left: 1px solid #30313e;
+}
+
+.panel-section {
+  padding: 15px;
+  border-bottom: 1px solid #30313e;
+}
+
+.panel-title,
+.panel-heading {
+  margin-bottom: 13px;
+  color: #dcd9eb;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-heading button {
+  width: 27px;
+  height: 27px;
+  border: 1px solid #51466f;
+  border-radius: 6px;
+  background: #342b4e;
+  color: white;
+  cursor: pointer;
+}
+
+/* ツール */
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.tool-button {
+  min-height: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #373847;
+  border-radius: 8px;
+  background: #242532;
+  color: #e5e3ef;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.tool-button span {
+  font-size: 10px;
+}
+
+.tool-button:hover,
+.tool-button.active {
+  border-color: #9b80ed;
+  background: #393052;
+}
+
+/* パーツ一覧 */
+
+.parts-section {
+  min-height: 200px;
+}
+
+.parts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 100px;
+}
+
+.empty-message {
+  padding: 18px 8px;
+  color: #77798b;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.wide-button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #65519b;
+  border-radius: 7px;
+  background: #393052;
+  color: #eeeaff;
+  cursor: pointer;
+}
+
+.wide-button:hover {
+  background: #4b3c70;
+}
+
+/* キャンバスエリア */
+
+.canvas-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #11121a;
+}
+
+.canvas-toolbar {
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  background: #191a25;
+  border-bottom: 1px solid #30313e;
+  color: #a9a8ba;
+  font-size: 11px;
+}
+
+.canvas-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.canvas-controls button {
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+#zoomValue {
+  min-width: 42px;
+  text-align: center;
+}
+
+.canvas-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #151620;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+#live2dCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-empty {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.empty-icon {
+  color: #9275dc;
+  font-size: 55px;
+}
+
+.canvas-empty h2 {
+  margin: 12px 0 5px;
+  font-size: 19px;
+}
+
+.canvas-empty p {
+  color: #9292a5;
+  font-size: 12px;
+}
+
+.canvas-empty button {
+  margin-top: 12px;
+  padding: 10px 18px;
+  border: 1px solid #8165c5;
+  border-radius: 7px;
+  background: #514078;
+  color: white;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.canvas-status {
+  height: 25px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: #191a25;
+  border-top: 1px solid #30313e;
+  color: #85869a;
+  font-size: 10px;
+}
+
+/* タイムライン */
+
+.timeline-panel {
+  height: 190px;
+  box-sizing: border-box;
+  background: #191a25;
+  border-top: 1px solid #30313e;
+}
+
+.timeline-header {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  border-bottom: 1px solid #30313e;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.timeline-content {
+  height: 147px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-empty {
+  color: #77798b;
+  font-size: 12px;
+}
+
+/* スクロールバー */
+
+.left-panel::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.left-panel::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #414253;
+}
+
+/* タブレット・スマートフォン */
+
+@media (max-width: 900px) {
+  .editor-layout {
+    grid-template-columns: 170px minmax(250px, 1fr);
+  }
+
+  .right-panel {
+    display: none;
+  }
+
+  .editor-header {
+    padding: 0 10px;
+  }
+
+  .editor-logo {
+    font-size: 11px;
+  }
+
+  .header-center {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .editor-header {
+    height: 52px;
+    gap: 5px;
+  }
+
+  .header-left {
+    gap: 6px;
+  }
+
+  .editor-mode {
+    display: none;
+  }
+
+  .header-right {
+    gap: 4px;
+  }
+
+  .editor-header button {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .editor-menu {
+    overflow-x: auto;
+  }
+
+  .editor-menu button {
+    white-space: nowrap;
+    font-size: 10px;
+  }
+
+  .editor-layout {
+    grid-template-columns: 105px minmax(0, 1fr);
+    height: calc(100vh - 52px - 36px - 150px);
+  }
+
+  .panel-section {
+    padding: 8px;
+  }
+
+  .tool-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+
+  .tool-button {
+    min-height: 52px;
+    font-size: 16px;
+  }
+
+  .tool-button span {
+    font-size: 9px;
+  }
+
+  .panel-title,
+  .panel-heading {
+    font-size: 11px;
+  }
+
+  .canvas-toolbar {
+    padding: 0 6px;
+  }
+
+  .canvas-controls {
+    gap: 3px;
+  }
+
+  .canvas-controls button {
+    padding: 5px;
+  }
+
+  .timeline-panel {
+    height: 150px;
+  }
+
+  .timeline-content {
+    height: 107px;
+  }
+}
