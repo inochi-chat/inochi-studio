@@ -630,6 +630,50 @@
         padding: 6px 4px;
       }
     }
+
+/* 右側プロパティ欄のレイアウト修正 */
+.properties {
+  position: relative;
+  z-index: 2;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+
+  width: auto;
+  max-width: none;
+  height: 100%;
+  min-width: 0;
+
+  transform: none;
+  border-radius: 0;
+  box-shadow: none;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* 収納時も右端に正しく収める */
+.properties.collapsed {
+  position: relative;
+  width: auto;
+  min-width: 0;
+  transform: none;
+}
+
+/* プロパティ欄の中身が横にはみ出さないようにする */
+#propertyPanel {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.properties *,
+.properties *::before,
+.properties *::after {
+  max-width: 100%;
+}
+
   </style>
 </head>
 
