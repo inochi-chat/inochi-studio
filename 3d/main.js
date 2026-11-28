@@ -13,7 +13,7 @@ import { createObjectLock } from "./objects/object-lock.js";
 import { createObjectGroup } from "./objects/object-group.js";
 
 import { createPropertyPanel } from "./app/property-panel.js";
-
+import { createEditorUI } from "./app/editor-ui.js";
 import { createSelectionSystem } from "./app/selection-controller.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
@@ -112,24 +112,18 @@ function isObjectEffectivelyLocked(object) {
 
 let objectListView;
 let hierarchyUI;
+let editorUI;
 
 function updateObjectList() {
-  objectListView.render(
-    objectManager.getAll(),
-    getSelectedObject()
-  );
+  editorUI.updateObjectList();
 }
 
 function updateHierarchy() {
-  hierarchyUI.update(
-    objectManager.getAll(),
-    getSelectedObject()
-  );
+  editorUI.updateHierarchy();
 }
 
 function refreshEditorUI() {
-  updateObjectList();
-  updateHierarchy();
+  editorUI.refreshEditorUI();
 }
 
 // =====================================================
@@ -522,6 +516,13 @@ hierarchyUI = createHierarchyUI({
   objectGroup,
   onSelectGroup: selectGroup,
   onRenameGroup: renameGroup
+});
+
+editorUI = createEditorUI({
+  objectManager,
+  getSelectedObject,
+  objectListView,
+  hierarchyUI
 });
 
 // =====================================================
