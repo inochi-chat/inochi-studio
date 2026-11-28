@@ -13,6 +13,7 @@ import { createObjectVisibility } from "./objects/object-visibility.js";
 import { createObjectLock } from "./objects/object-lock.js";
 import { createObjectGroup } from "./objects/object-group.js";
 import { createDuplicateButton } from "./objects/duplicate-button.js";
+import { createObjectActions } from "./app/object-actions.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
