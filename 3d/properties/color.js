@@ -1,5 +1,5 @@
 
-export function createColorEditor(object, onChange) {
+export function createColorEditor(object, onMaterialChange) {
   const group = document.createElement("div");
   group.className = "property-group";
 
@@ -16,15 +16,27 @@ export function createColorEditor(object, onChange) {
     return group;
   }
 
-  function notifyChange() {
-    material.needsUpdate = true;
-
-    if (onChange) {
-      onChange(object);
-    }
+  function getState() {
+    return {
+      color: material.color.getHex(),
+      metalness: material.metalness ?? 0,
+      roughness: material.roughness ?? 0.5,
+      opacity: material.opacity ?? 1,
+      transparent: material.transparent ?? false
+    };
   }
 
-  function createSlider(labelText, min, max, step, initialValue, onInput) {
+  function commit(before) {
+    const after = getState();
+
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      return;
+    }
+
+    onMaterialChange?.(object, before, after);
+  }
+
+  function createSlider(labelText, initialValue, onInput) {
     const wrapper = document.createElement("div");
     wrapper.style.marginBottom = "14px";
 
@@ -32,7 +44,6 @@ export function createColorEditor(object, onChange) {
     label.style.display = "flex";
     label.style.justifyContent = "space-between";
     label.style.marginBottom = "6px";
-    label.style.fontSize = "14px";
 
     const name = document.createElement("span");
     name.textContent = labelText;
@@ -44,18 +55,32 @@ export function createColorEditor(object, onChange) {
 
     const input = document.createElement("input");
     input.type = "range";
-    input.min = min;
-    input.max = max;
-    input.step = step;
+    input.min = "0";
+    input.max = "1";
+    input.step = "0.01";
     input.value = initialValue;
     input.style.width = "100%";
-    input.style.minHeight = "32px";
+    input.style.minHeight = "36px";
+    input.style.touchAction = "pan-y";
+
+    let before = null;
+
+    input.addEventListener("pointerdown", () => {
+      before = getState();
+    });
 
     input.addEventListener("input", () => {
       const value = Number(input.value);
       valueText.textContent = value.toFixed(2);
       onInput(value);
-      notifyChange();
+      material.needsUpdate = true;
+    });
+
+    input.addEventListener("change", () => {
+      if (!before) return;
+
+      commit(before);
+      before = null;
     });
 
     wrapper.append(label, input);
@@ -73,49 +98,39 @@ export function createColorEditor(object, onChange) {
   colorInput.style.width = "100%";
   colorInput.style.minHeight = "44px";
 
+  let colorBefore = null;
+
+  colorInput.addEventListener("pointerdown", () => {
+    colorBefore = getState();
+  });
+
   colorInput.addEventListener("input", () => {
     material.color.set(colorInput.value);
-    notifyChange();
+  });
+
+  colorInput.addEventListener("change", () => {
+    const before = colorBefore || getState();
+    commit(before);
+    colorBefore = null;
   });
 
   group.appendChild(colorInput);
 
   // メタリック
-  createSlider(
-    "メタリック",
-    0,
-    1,
-    0.01,
-    material.metalness ?? 0,
-    value => {
-      material.metalness = value;
-    }
-  );
+  createSlider("メタリック", material.metalness ?? 0, value => {
+    material.metalness = value;
+  });
 
   // 粗さ
-  createSlider(
-    "粗さ",
-    0,
-    1,
-    0.01,
-    material.roughness ?? 0.5,
-    value => {
-      material.roughness = value;
-    }
-  );
+  createSlider("粗さ", material.roughness ?? 0.5, value => {
+    material.roughness = value;
+  });
 
   // 透明度
-  createSlider(
-    "透明度",
-    0,
-    1,
-    0.01,
-    material.opacity ?? 1,
-    value => {
-      material.opacity = value;
-      material.transparent = value < 1;
-    }
-  );
+  createSlider("透明度", material.opacity ?? 1, value => {
+    material.opacity = value;
+    material.transparent = value < 1;
+  });
 
   return group;
 }
