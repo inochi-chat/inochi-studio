@@ -5,7 +5,8 @@ export function createMeshToolbar({
   onMultiSelectChange,
   onAction,
   onGizmoVisibilityChange,
-  onMirrorChange
+  onMirrorChange,
+  onSculptModeChange
 }) {
   if (!container) {
     throw new Error("Mesh toolbar container not found");
