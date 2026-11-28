@@ -365,6 +365,53 @@ meshPicker.setSculptMode(meshSculptEnabled, meshSculptMode);
   meshGizmo?.update([]);
 }
 
+// =====================================================
+// 連続スカルプトブラシ
+// =====================================================
+
+function applySculptStroke(stroke) {
+  if (!meshEditing || !activeMesh || !meshSculptEnabled) {
+    return;
+  }
+
+  const point = stroke.point;
+
+  if (
+    !point ||
+    !Number.isFinite(point.x) ||
+    !Number.isFinite(point.y) ||
+    !Number.isFinite(point.z)
+  ) {
+    return;
+  }
+
+  if (
+    !Number.isFinite(meshSculptRadius) ||
+    meshSculptRadius <= 0 ||
+    !Number.isFinite(meshSculptStrength)
+  ) {
+    return;
+  }
+
+  // ストローク中の最初の変更前にだけ履歴保存
+  if (!meshSculptStrokeSaved) {
+    meshHistory?.save();
+    meshSculptStrokeSaved = true;
+  }
+
+  const mode = stroke.mode || meshSculptMode;
+
+  const success = meshOperations.sculptAt(
+    point,
+    meshSculptRadius,
+    meshSculptStrength,
+    mode
+  );
+
+  if (success) {
+    meshSculptStrokeChanged = true;
+  }
+}
 
 // メッシュ編集終了
 function exitMeshEditMode() {
