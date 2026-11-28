@@ -59,13 +59,8 @@ import {
 
 import { createMeshEditor } from "./tools/mesh-editor.js";
 import { createMeshOperations } from "./tools/mesh-operations.js";
-import { createMeshTopology } from "./tools/mesh-topology.js";
-import { createMeshVisuals } from "./tools/mesh-visuals.js";
-import { createMeshPicker } from "./tools/mesh-picker.js";
-import { createMeshEditCommands } from "./tools/mesh-edit-commands.js";
-import { createMeshHistory } from "./tools/mesh-history.js";
+
 import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
-import { createMeshGizmo } from "./tools/mesh-gizmo.js";
 
 import { createMeshSculptController } from "./app/mesh-sculpt.js";
 import { createMeshEditing } from "./app/mesh-editing.js";
@@ -204,6 +199,7 @@ transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
 
+
 // =====================================================
 // 9. メッシュ編集システム
 // =====================================================
@@ -217,14 +213,6 @@ const meshEditor = createMeshEditor({
 
 const meshOperations = createMeshOperations(meshEditor);
 
-let meshTopology = null;
-let meshVisuals = null;
-let meshPicker = null;
-let meshGizmo = null;
-let meshHistory = null;
-let meshEditCommands = null;
-let activeMesh = null;
-
 let meshSelectionMode = "vertex";
 let meshMultiSelect = false;
 
@@ -235,237 +223,111 @@ let meshSculptMode = "pushpull";
 let meshSculptRadius = 0.5;
 let meshSculptStrength = 0.1;
 
-// スカルプト処理を専用モジュールに任せる
+let meshEditingController = null;
+
+// メッシュ編集状態を取得
+function getMeshState() {
+  return meshEditingController?.getState() ?? {};
+}
+
+// メッシュ編集用の再構築
+function rebuildMeshTools() {
+  meshEditingController?.rebuild();
+}
+
+// スカルプト処理
 const meshSculptController = createMeshSculptController({
   getOperations: () => meshOperations,
-  getHistory: () => meshHistory,
+
+  getHistory: () => getMeshState().history,
+
   isEditing: () => meshEditing,
+
   isEnabled: () => meshSculptEnabled,
+
   getRadius: () => meshSculptRadius,
+
   getStrength: () => meshSculptStrength,
+
   getMode: () => meshSculptMode,
 
   onStrokeEnd(changed) {
     if (!changed) return;
 
     requestAnimationFrame(() => {
-      if (meshEditing && activeMesh) {
+      if (
+        meshEditing &&
+        meshEditingController?.getActiveMesh()
+      ) {
         rebuildMeshTools();
       }
     });
   }
 });
 
-// メッシュ編集用の選択・表示を再構築
-function rebuildMeshTools() {
-  if (!activeMesh || !meshEditing) return;
+// メッシュ編集管理モジュール
+meshEditingController = createMeshEditing({
+  scene,
+  camera,
+  renderer,
+  orbit,
 
-  meshPicker?.dispose();
-  meshVisuals?.dispose();
-  meshGizmo?.dispose();
+  meshEditor,
+  meshOperations,
 
-  meshPicker = null;
-  meshVisuals = null;
-  meshGizmo = null;
+  sculptController: meshSculptController,
 
-  meshTopology = createMeshTopology(activeMesh);
+  getSelectedObject,
 
-  meshVisuals = createMeshVisuals({
-    mesh: activeMesh,
-    topology: meshTopology
-  });
+  getActiveGroup: () => activeGroup,
 
-  meshGizmo = createMeshGizmo({
-    scene,
-    camera,
-    renderer,
-    mesh: activeMesh,
-    topology: meshTopology,
-    operations: meshOperations,
-    meshEditor,
-    meshHistory,
-    orbitControls: orbit
-  });
+  isObjectEffectivelyLocked,
 
-  meshGizmo.setVisible(meshGizmoVisible);
+  getSelectedObjects: () => multiSelection.getAll(),
 
-  meshPicker = createMeshPicker({
-    camera,
-    renderer,
-    orbitControls: orbit,
-    mesh: activeMesh,
-    topology: meshTopology,
-    visuals: meshVisuals,
-    meshEditor,
+  transform,
 
-    onSelectionChange(selection) {
-      const vertexIds = new Set();
+  selectPrimaryObject,
 
-      for (const id of selection.vertices) {
-        vertexIds.add(id);
-      }
+  refreshProperties,
 
-      for (const id of selection.edges) {
-        const edge = meshTopology.getEdge(id);
-        if (!edge) continue;
+  propertyPanel,
 
-        for (const vertexId of edge.vertices) {
-          vertexIds.add(vertexId);
-        }
-      }
+  container: meshToolbarContainer,
 
-      for (const id of selection.faces) {
-        const face = meshTopology.getFace(id);
-        if (!face) continue;
+  getSculptSettings: () => ({
+    enabled: meshSculptEnabled,
+    mode: meshSculptMode
+  }),
 
-        for (const vertexId of face.vertices) {
-          vertexIds.add(vertexId);
-        }
-      }
+  getSelectionSettings: () => ({
+    mode: meshSelectionMode,
+    multiSelect: meshMultiSelect
+  }),
 
-      meshEditor.setSelectedVertices([...vertexIds]);
-      meshGizmo?.update([...vertexIds]);
-    },
-
-    onSculptStroke(stroke) {
-      meshSculptController.handleStroke(stroke);
-    }
-  });
-
-  meshPicker.setMode(meshSelectionMode);
-  meshPicker.setMultiSelect(meshMultiSelect);
-  meshPicker.setSculptMode(meshSculptEnabled, meshSculptMode);
-
-  meshEditor.refreshVertexPositions();
-  meshEditor.clearSelection();
-
-  meshGizmo?.update([]);
-}
+  getGizmoVisible: () => meshGizmoVisible
+});
 
 // メッシュ編集終了
 function exitMeshEditMode() {
   if (!meshEditing) return;
 
-  const previousMesh = activeMesh;
-
+  // 先に通常モードへ切り替える
   meshEditing = false;
-  meshSculptController.resetStroke();
 
-  meshPicker?.dispose();
-  meshVisuals?.dispose();
-  meshGizmo?.dispose();
-  meshHistory?.dispose();
-
-  meshPicker = null;
-  meshVisuals = null;
-  meshGizmo = null;
-  meshTopology = null;
-  meshHistory = null;
-  meshEditCommands = null;
-
-  meshEditor.exitEditMode();
-
-  activeMesh = null;
-
-  meshToolbar.setEditing(false);
-  meshToolbarContainer.hidden = true;
-
-  orbit.enabled = true;
-
-  if (previousMesh && objectManager.getAll().includes(previousMesh)) {
-    selectPrimaryObject(previousMesh);
-  } else {
-    transform.detach();
-  }
-
-  refreshProperties();
+  meshEditingController.exit();
 }
 
 // メッシュ編集開始
 function enterMeshEditMode() {
   if (meshEditing) return;
 
-  if (activeGroup) {
-    alert("グループではなく、メッシュオブジェクトを選択してください。");
-    return;
-  }
-
-  const selected = getSelectedObject();
-
-  if (!selected || !selected.isMesh) {
-    alert("メッシュオブジェクトを選択してください。");
-    return;
-  }
-
-  if (isObjectEffectivelyLocked(selected)) {
-    alert("ロック中のオブジェクトは編集できません。");
-    return;
-  }
-
-  const selectedObjects = multiSelection.getAll();
-
-  if (
-    selectedObjects.length > 1 ||
-    (selectedObjects.length === 1 && selectedObjects[0] !== selected)
-  ) {
-    alert("メッシュ編集は1つのオブジェクトだけを選択して行ってください。");
-    return;
-  }
-
-  meshEditing = true;
-  activeMesh = selected;
-
-  transform.detach();
-
-  if (!meshEditor.enterEditMode(activeMesh)) {
-    meshEditing = false;
-    activeMesh = null;
-    return;
-  }
-
   meshSelectionMode = "vertex";
   meshMultiSelect = false;
 
-  meshToolbar.setMode("vertex");
-  meshToolbar.setMultiSelect(false);
-  meshToolbar.setEditing(true);
+  const success = meshEditingController.enter();
 
-  meshToolbarContainer.hidden = false;
-
-  meshHistory = createMeshHistory({
-    mesh: activeMesh,
-    maxHistory: 50,
-    onRestore() {
-      rebuildMeshTools();
-    }
-  });
-
-  meshEditCommands = createMeshEditCommands({
-    mesh: activeMesh,
-
-    getTopology() {
-      return meshTopology;
-    },
-
-    getSelection() {
-      return meshPicker?.getSelection() ?? null;
-    },
-
-    onChange() {
-      rebuildMeshTools();
-    }
-  });
-
-  rebuildMeshTools();
-
-  propertyPanel.innerHTML = "";
-
-  const message = document.createElement("p");
-  message.className = "empty";
-  message.textContent =
-    "メッシュ編集モード中です。頂点・辺・面を選択して編集できます。";
-
-  propertyPanel.appendChild(message);
+  meshEditing = success;
 }
 
 // 数値入力
@@ -492,6 +354,12 @@ function askVector(title, defaultValue) {
 
 // メッシュ編集操作
 function runMeshAction(action) {
+  const state = getMeshState();
+
+  const meshPicker = state.picker;
+  const meshHistory = state.history;
+  const meshEditCommands = state.editCommands;
+
   if (!meshEditing || !meshPicker || !meshHistory) return;
 
   if (action.startsWith("transform:")) {
@@ -717,12 +585,12 @@ const meshToolbar = createMeshToolbar({
 
   onModeChange(mode) {
     meshSelectionMode = mode;
-    meshPicker?.setMode(mode);
+    meshEditingController.setSelectionMode(mode);
   },
 
   onMultiSelectChange(enabled) {
     meshMultiSelect = enabled;
-    meshPicker?.setMultiSelect(enabled);
+    meshEditingController.setMultiSelect(enabled);
   },
 
   onAction(action) {
@@ -731,7 +599,7 @@ const meshToolbar = createMeshToolbar({
 
   onGizmoVisibilityChange(visible) {
     meshGizmoVisible = visible;
-    meshGizmo?.setVisible(visible);
+    meshEditingController.setGizmoVisible(visible);
   },
 
   onMirrorChange(enabled) {
@@ -750,15 +618,18 @@ const meshToolbar = createMeshToolbar({
       meshSculptStrength = strength;
     }
 
-    meshPicker?.setSculptMode(
+    meshEditingController.setSculptMode(
       meshSculptEnabled,
       meshSculptMode
     );
   }
 });
 
+meshEditingController.setToolbar(meshToolbar);
+
 meshToolbar.setEditing(false);
 meshToolbarContainer.hidden = true;
+
 
 // =====================================================
 // 11. プロパティ表示
@@ -1455,13 +1326,14 @@ multiSelectionButton?.addEventListener("click", () => {
 
 updateMultiSelectionButton();
 
-// =====================================================
+
+ // =====================================================
 // 33. Undo・Redo
 // =====================================================
 
 function undo() {
   if (meshEditing) {
-    meshHistory?.undo();
+    getMeshState().history?.undo();
     return;
   }
 
@@ -1470,7 +1342,7 @@ function undo() {
 
 function redo() {
   if (meshEditing) {
-    meshHistory?.redo();
+    getMeshState().history?.redo();
     return;
   }
 
