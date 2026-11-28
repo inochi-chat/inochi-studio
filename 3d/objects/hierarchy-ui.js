@@ -32,7 +32,8 @@ export function createHierarchyUI({
     objectLock,
     onLockChange,
     objectGroup,
-    onSelectGroup
+    onSelectGroup,
+    onRenameGroup
   );
 
   const hierarchyControls = createHierarchyControls(
