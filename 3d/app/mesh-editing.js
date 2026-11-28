@@ -43,7 +43,7 @@ export function createMeshEditing({
   }
 
   function rebuild() {
-    if (!activeMesh || !editing) return;
+    if (!editing || !activeMesh) return;
 
     picker?.dispose();
     visuals?.dispose();
@@ -58,10 +58,6 @@ export function createMeshEditing({
     visuals = createMeshVisuals({
       mesh: activeMesh,
       topology
-    });
-
-    history?.setRestoreCallback?.(() => {
-      rebuild();
     });
 
     gizmo = createMeshGizmo({
@@ -123,15 +119,12 @@ export function createMeshEditing({
       }
     });
 
-    const selectionSettings = getSelectionSettings();
-    const sculptSettings = getSculptSettings();
+    const selection = getSelectionSettings();
+    const sculpt = getSculptSettings();
 
-    picker.setMode(selectionSettings.mode);
-    picker.setMultiSelect(selectionSettings.multiSelect);
-    picker.setSculptMode(
-      sculptSettings.enabled,
-      sculptSettings.mode
-    );
+    picker.setMode(selection.mode);
+    picker.setMultiSelect(selection.multiSelect);
+    picker.setSculptMode(sculpt.enabled, sculpt.mode);
 
     meshEditor.refreshVertexPositions();
     meshEditor.clearSelection();
@@ -174,12 +167,13 @@ export function createMeshEditing({
 
     if (
       selectedObjects.length > 1 ||
-      (
-        selectedObjects.length === 1 &&
-        selectedObjects[0] !== selected
-      )
+      (selectedObjects.length === 1 && selectedObjects[0] !== selected)
     ) {
       alert("メッシュ編集は1つのオブジェクトだけを選択して行ってください。");
+      return false;
+    }
+
+    if (!meshEditor.enterEditMode(selected)) {
       return false;
     }
 
@@ -187,12 +181,6 @@ export function createMeshEditing({
     activeMesh = selected;
 
     transform.detach();
-
-    if (!meshEditor.enterEditMode(activeMesh)) {
-      editing = false;
-      activeMesh = null;
-      return false;
-    }
 
     toolbar?.setMode("vertex");
     toolbar?.setMultiSelect(false);
@@ -259,29 +247,16 @@ export function createMeshEditing({
 
     orbit.enabled = true;
 
-    if (previousMesh) {
+    if (
+      previousMesh &&
+      selectPrimaryObject
+    ) {
       selectPrimaryObject(previousMesh);
     } else {
       transform.detach();
     }
 
     refreshProperties();
-  }
-
-  function setSelectionMode(mode) {
-    picker?.setMode(mode);
-  }
-
-  function setMultiSelect(enabled) {
-    picker?.setMultiSelect(enabled);
-  }
-
-  function setSculptMode(enabled, mode) {
-    picker?.setSculptMode(enabled, mode);
-  }
-
-  function setGizmoVisible(visible) {
-    gizmo?.setVisible(visible);
   }
 
   function getState() {
@@ -301,14 +276,29 @@ export function createMeshEditing({
     exit,
     rebuild,
     setToolbar,
-    setSelectionMode,
-    setMultiSelect,
-    setSculptMode,
-    setGizmoVisible,
+
+    setSelectionMode(mode) {
+      picker?.setMode(mode);
+    },
+
+    setMultiSelect(enabled) {
+      picker?.setMultiSelect(enabled);
+    },
+
+    setSculptMode(enabled, mode) {
+      picker?.setSculptMode(enabled, mode);
+    },
+
+    setGizmoVisible(visible) {
+      gizmo?.setVisible(visible);
+    },
+
     getState,
+
     isEditing() {
       return editing;
     },
+
     getActiveMesh() {
       return activeMesh;
     }
