@@ -16,6 +16,7 @@ import { createPropertyPanel } from "./app/property-panel.js";
 import { createEditorUI } from "./app/editor-ui.js";
 import { createSelectionSystem } from "./app/selection-controller.js";
 import { createSelectionActions } from "./app/selection-actions.js";
+import { createHistoryActions } from "./app/history-actions.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 import { createHistoryManager } from "./history/history-manager.js";
@@ -422,7 +423,25 @@ function selectGroup(group) {
 }
 
 // =====================================================
-// 16. オブジェクト一覧
+// 16. 履歴操作モジュール
+// =====================================================
+
+const historyActions = createHistoryActions({
+  history,
+
+  isMeshEditing: () => meshEditing,
+
+  getMeshHistory: () => getMeshState().history,
+
+  setActiveGroup(group) {
+    activeGroup = group;
+  },
+
+  selectObject
+});
+
+// =====================================================
+// 17. オブジェクト一覧
 // =====================================================
 
 objectListView = createObjectList(
@@ -431,7 +450,7 @@ objectListView = createObjectList(
 );
 
 // =====================================================
-// 17. グループ名変更
+// 18. グループ名変更
 // =====================================================
 
 function renameGroup(group, newName) {
@@ -453,7 +472,7 @@ function renameGroup(group, newName) {
 }
 
 // =====================================================
-// 18. 階層操作モジュール
+// 19. 階層操作モジュール
 // =====================================================
 
 const hierarchyActions = createHierarchyActions({
@@ -472,7 +491,7 @@ const hierarchyActions = createHierarchyActions({
 });
 
 // =====================================================
-// 19. 階層UI
+// 20. 階層UI
 // =====================================================
 
 hierarchyUI = createHierarchyUI({
@@ -505,18 +524,15 @@ editorUI = createEditorUI({
 });
 
 // =====================================================
-// 20. 履歴変更時
+// 21. 履歴変更時
 // =====================================================
 
 function onHistoryChange(object) {
-  if (meshEditing) return;
-
-  activeGroup = null;
-  selectObject(object);
+  historyActions.onHistoryChange(object);
 }
 
 // =====================================================
-// 21. オブジェクト操作モジュール
+// 22. オブジェクト操作モジュール
 // =====================================================
 
 const objectActions = createObjectActions({
@@ -542,7 +558,7 @@ const objectActions = createObjectActions({
 });
 
 // =====================================================
-// 22. メッシュ操作モジュール
+// 23. メッシュ操作モジュール
 // =====================================================
 
 const meshActions = createMeshActions({
@@ -559,7 +575,7 @@ const meshActions = createMeshActions({
 });
 
 // =====================================================
-// 23. グループ操作ボタン
+// 24. グループ操作ボタン
 // =====================================================
 
 document
@@ -577,7 +593,7 @@ document
   );
 
 // =====================================================
-// 24. 複数選択モード
+// 25. 複数選択モード
 // =====================================================
 
 function updateMultiSelectionButton() {
@@ -612,29 +628,19 @@ multiSelectionButton?.addEventListener("click", () => {
 updateMultiSelectionButton();
 
 // =====================================================
-// 25. Undo・Redo
+// 26. Undo・Redo
 // =====================================================
 
 function undo() {
-  if (meshEditing) {
-    getMeshState().history?.undo();
-    return;
-  }
-
-  history.undo();
+  historyActions.undo();
 }
 
 function redo() {
-  if (meshEditing) {
-    getMeshState().history?.redo();
-    return;
-  }
-
-  history.redo();
+  historyActions.redo();
 }
 
 // =====================================================
-// 26. 3D画面からの通常選択
+// 27. 3D画面からの通常選択
 // =====================================================
 
 const objectSelection = selectionSystem.createObjectPicker({
@@ -649,7 +655,7 @@ const objectSelection = selectionSystem.createObjectPicker({
 });
 
 // =====================================================
-// 27. ボタン接続
+// 28. ボタン接続
 // =====================================================
 
 document.querySelector("#addCube")
@@ -689,7 +695,7 @@ document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
 // =====================================================
-// 28. キーボードショートカット
+// 29. キーボードショートカット
 // =====================================================
 
 document.addEventListener("keydown", event => {
@@ -722,7 +728,7 @@ document.addEventListener("keydown", event => {
 });
 
 // =====================================================
-// 29. 初期キューブ
+// 30. 初期キューブ
 // =====================================================
 
 const initialCubeGeometry = createGeometry("cube");
@@ -737,7 +743,7 @@ if (initialCube) {
 }
 
 // =====================================================
-// 30. 描画ループ
+// 31. 描画ループ
 // =====================================================
 
 function animate() {
