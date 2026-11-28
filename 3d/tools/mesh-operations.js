@@ -24,7 +24,6 @@ export function createMeshOperations(meshEditor) {
 
   function captureState() {
     const context = getContext();
-
     if (!context) return null;
 
     return {
@@ -66,8 +65,6 @@ export function createMeshOperations(meshEditor) {
     }
 
     const { mesh, position, selected } = context;
-
-    // ミラー相手の頂点を探すため、全頂点を座標で分類
     const positionMap = new Map();
 
     for (let i = 0; i < position.count; i++) {
@@ -88,17 +85,12 @@ export function createMeshOperations(meshEditor) {
 
     for (const vertex of selected) {
       const original = vertex.position.clone();
-      const key = positionKey(
-        original.x,
-        original.y,
-        original.z
-      );
+      const key = positionKey(original.x, original.y, original.z);
 
       if (processed.has(key)) continue;
 
       const onCenterLine = Math.abs(original.x) < 0.00001;
 
-      // 選択頂点を変形
       const current = original.clone();
       transform(current, vertex);
 
@@ -107,21 +99,13 @@ export function createMeshOperations(meshEditor) {
       }
 
       for (const index of vertex.sourceIndices) {
-        position.setXYZ(
-          index,
-          current.x,
-          current.y,
-          current.z
-        );
+        position.setXYZ(index, current.x, current.y, current.z);
       }
 
       processed.add(key);
 
-      if (!mirrorXEnabled || onCenterLine) {
-        continue;
-      }
+      if (!mirrorXEnabled || onCenterLine) continue;
 
-      // X軸反対側の同じ位置にある頂点を探す
       const mirrorKey = positionKey(
         -original.x,
         original.y,
@@ -129,12 +113,8 @@ export function createMeshOperations(meshEditor) {
       );
 
       const mirrorIndices = positionMap.get(mirrorKey);
+      if (!mirrorIndices?.length) continue;
 
-      if (!mirrorIndices || mirrorIndices.length === 0) {
-        continue;
-      }
-
-      // 変形結果をX軸反転して反対側へ適用
       const mirrored = current.clone();
       mirrored.x *= -1;
 
@@ -150,23 +130,20 @@ export function createMeshOperations(meshEditor) {
       processed.add(mirrorKey);
     }
 
-    position.needsUpdate = true;
-
-    mesh.geometry.computeVertexNormals();
-    mesh.geometry.computeBoundingBox();
-    mesh.geometry.computeBoundingSphere();
-
-    meshEditor.refreshVertexPositions();
-
+    finishGeometry(mesh);
     return true;
   }
 
-  function move(x = 0, y = 0, z = 0) {
-    return applyToSelected(vertex => {
-      vertex.x += x;
-      vertex.y += y;
-      vertex.z += z;
-    });
+  function finishGeometry(mesh) {
+    const geometry = mesh.geometry;
+    const position = geometry.attributes.position;
+
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+
+    meshEditor.refreshVertexPositions();
   }
 
   function getSelectionCenter(selected) {
@@ -179,12 +156,17 @@ export function createMeshOperations(meshEditor) {
     return center.divideScalar(selected.length);
   }
 
+  function move(x = 0, y = 0, z = 0) {
+    return applyToSelected(vertex => {
+      vertex.x += x;
+      vertex.y += y;
+      vertex.z += z;
+    });
+  }
+
   function scale(x = 1, y = 1, z = 1) {
     const context = getContext();
-
-    if (!context || context.selected.length === 0) {
-      return false;
-    }
+    if (!context || context.selected.length === 0) return false;
 
     const center = getSelectionCenter(context.selected);
 
@@ -201,10 +183,7 @@ export function createMeshOperations(meshEditor) {
 
   function rotate(x = 0, y = 0, z = 0) {
     const context = getContext();
-
-    if (!context || context.selected.length === 0) {
-      return false;
-    }
+    if (!context || context.selected.length === 0) return false;
 
     const center = getSelectionCenter(context.selected);
 
@@ -215,6 +194,258 @@ export function createMeshOperations(meshEditor) {
       vertex.sub(center);
       vertex.applyQuaternion(quaternion);
       vertex.add(center);
+    });
+  }
+
+  // ブラシの中心を取得。左右対称ONなら反対側にも中心を作る
+  function getBrushCenters(selected) {
+    const centers = [];
+
+    for (const vertex of selected) {
+      const center = vertex.position.clone();
+      centers.push(center);
+
+      if (mirrorXEnabled && Math.abs(center.x) > 0.00001) {
+        centers.push(
+          new THREE.Vector3(-center.x, center.y, center.z)
+        );
+      }
+    }
+
+    const unique = new Map();
+
+    for (const center of centers) {
+      unique.set(
+        positionKey(center.x, center.y, center.z),
+        center
+      );
+    }
+
+    return [...unique.values()];
+  }
+
+  function getUniqueRecords(mesh) {
+    const geometry = mesh.geometry;
+    const position = geometry.attributes.position;
+    const normal = geometry.attributes.normal;
+
+    const records = new Map();
+
+    for (let i = 0; i < position.count; i++) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      const z = position.getZ(i);
+      const key = positionKey(x, y, z);
+
+      if (!records.has(key)) {
+        records.set(key, {
+          key,
+          position: new THREE.Vector3(x, y, z),
+          normal: new THREE.Vector3(),
+          indices: [],
+          normalCount: 0
+        });
+      }
+
+      const record = records.get(key);
+      record.indices.push(i);
+
+      if (normal) {
+        record.normal.x += normal.getX(i);
+        record.normal.y += normal.getY(i);
+        record.normal.z += normal.getZ(i);
+        record.normalCount++;
+      }
+    }
+
+    for (const record of records.values()) {
+      if (record.normal.lengthSq() > 0) {
+        record.normal.normalize();
+      } else {
+        record.normal.set(0, 1, 0);
+      }
+    }
+
+    return [...records.values()];
+  }
+
+  function getNearestBrush(record, centers) {
+    let nearest = null;
+    let minDistance = Infinity;
+
+    for (const center of centers) {
+      const distance = record.position.distanceTo(center);
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = center;
+      }
+    }
+
+    return {
+      center: nearest,
+      distance: minDistance
+    };
+  }
+
+  function brushFalloff(distance, radius) {
+    if (distance >= radius) return 0;
+
+    const t = 1 - distance / radius;
+    return t * t * (3 - 2 * t);
+  }
+
+  function applyBrush(radius, strength, operation) {
+    const context = getContext();
+
+    if (!context || context.selected.length === 0) {
+      return false;
+    }
+
+    radius = Number(radius);
+    strength = Number(strength);
+
+    if (
+      !Number.isFinite(radius) ||
+      !Number.isFinite(strength) ||
+      radius <= 0
+    ) {
+      return false;
+    }
+
+    const { mesh } = context;
+    const geometry = mesh.geometry;
+
+    // 頂点法線を最新にする
+    geometry.computeVertexNormals();
+
+    const position = geometry.attributes.position;
+    const centers = getBrushCenters(context.selected);
+    const records = getUniqueRecords(mesh);
+
+    if (centers.length === 0 || records.length === 0) {
+      return false;
+    }
+
+    const originalPositions = records.map(record =>
+      record.position.clone()
+    );
+
+    const updates = [];
+
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      const nearest = getNearestBrush(record, centers);
+      const influence = brushFalloff(nearest.distance, radius);
+
+      if (influence <= 0) continue;
+
+      const next = originalPositions[i].clone();
+
+      operation({
+        next,
+        original: originalPositions[i],
+        normal: record.normal,
+        center: nearest.center,
+        influence,
+        radius,
+        strength,
+        records,
+        originalPositions,
+        index: i
+      });
+
+      updates.push({ record, next });
+    }
+
+    if (updates.length === 0) return false;
+
+    for (const update of updates) {
+      for (const index of update.record.indices) {
+        position.setXYZ(
+          index,
+          update.next.x,
+          update.next.y,
+          update.next.z
+        );
+      }
+    }
+
+    finishGeometry(mesh);
+    return true;
+  }
+
+  // 押し出し・へこませる：ブラシ中心から外側／内側へ動かす
+  function sculptPushPull(radius = 0.5, strength = 0.1) {
+    return applyBrush(radius, strength, ({
+      next,
+      original,
+      center,
+      influence,
+      strength
+    }) => {
+      const direction = original.clone().sub(center);
+
+      if (direction.lengthSq() < 0.000001) {
+        return;
+      }
+
+      direction.normalize();
+      next.addScaledVector(direction, strength * influence);
+    });
+  }
+
+  // なめらか化：近くの頂点の平均位置へ少しずつ近づける
+  function sculptSmooth(radius = 0.5, strength = 0.5) {
+    const amount = THREE.MathUtils.clamp(strength, 0, 1);
+
+    return applyBrush(radius, amount, ({
+      next,
+      influence,
+      radius,
+      records,
+      originalPositions,
+      index
+    }) => {
+      const current = originalPositions[index];
+      const neighborRadius = radius * 0.45;
+
+      const average = new THREE.Vector3();
+      let totalWeight = 0;
+
+      for (let i = 0; i < records.length; i++) {
+        if (i === index) continue;
+
+        const other = originalPositions[i];
+        const distance = current.distanceTo(other);
+
+        if (distance <= 0.00001 || distance > neighborRadius) {
+          continue;
+        }
+
+        const weight = 1 / distance;
+        average.addScaledVector(other, weight);
+        totalWeight += weight;
+      }
+
+      if (totalWeight === 0) return;
+
+      average.divideScalar(totalWeight);
+
+      const blend = amount * influence;
+      next.lerp(average, blend);
+    });
+  }
+
+  // 膨らませる：頂点法線の方向へ押し出す
+  function sculptInflate(radius = 0.5, strength = 0.1) {
+    return applyBrush(radius, strength, ({
+      next,
+      normal,
+      influence,
+      strength
+    }) => {
+      next.addScaledVector(normal, strength * influence);
     });
   }
 
@@ -233,6 +464,9 @@ export function createMeshOperations(meshEditor) {
     captureState,
     restoreState,
     setMirrorX,
-    isMirrorXEnabled
+    isMirrorXEnabled,
+    sculptPushPull,
+    sculptSmooth,
+    sculptInflate
   };
 }
