@@ -28,7 +28,6 @@ export function createMeshToolbar({
       height: 48px;
       min-height: 48px;
       padding: 0;
-      margin: 0;
       border: 1px solid #7964a8;
       border-radius: 12px;
       background: #30284c;
@@ -264,7 +263,6 @@ export function createMeshToolbar({
   toggleButton.title = "メッシュ編集メニュー";
   toggleButton.setAttribute("aria-label", "メッシュ編集メニュー");
   toggleButton.setAttribute("aria-expanded", "false");
-
   root.appendChild(toggleButton);
 
   const panel = document.createElement("div");
@@ -284,13 +282,9 @@ export function createMeshToolbar({
     toggleButton.textContent = "☰";
   }
 
-  function toggleMenu() {
-    panel.hidden ? openMenu() : closeMenu();
-  }
-
   toggleButton.addEventListener("click", event => {
     event.stopPropagation();
-    toggleMenu();
+    panel.hidden ? openMenu() : closeMenu();
   });
 
   root.addEventListener("click", event => {
@@ -303,21 +297,17 @@ export function createMeshToolbar({
 
   document.addEventListener("pointerdown", handleOutsideClick);
 
-  // メニューサイズ変更
   const resizeHandle = document.createElement("button");
   resizeHandle.type = "button";
   resizeHandle.className = "mesh-toolbar-resize";
-  resizeHandle.textContent = "↔  メニューサイズ変更  ↕";
+  resizeHandle.textContent = "↔ メニューサイズ変更 ↕";
   resizeHandle.title = "ドラッグしてメニューのサイズを変更";
-  resizeHandle.setAttribute("aria-label", "メニューサイズ変更");
-
   panel.appendChild(resizeHandle);
 
   let resizeState = null;
 
   resizeHandle.addEventListener("pointerdown", event => {
     event.preventDefault();
-    event.stopPropagation();
 
     const rect = panel.getBoundingClientRect();
 
@@ -341,18 +331,16 @@ export function createMeshToolbar({
     const maxWidth = Math.min(560, window.innerWidth - 24);
     const maxHeight = window.innerHeight * 0.85;
 
-    const newWidth = Math.max(
+    panel.style.width = `${Math.max(
       190,
       Math.min(maxWidth, resizeState.startWidth + dx)
-    );
+    )}px`;
 
-    const newHeight = Math.max(
+    panel.style.height = `${Math.max(
       160,
       Math.min(maxHeight, resizeState.startHeight + dy)
-    );
+    )}px`;
 
-    panel.style.width = `${newWidth}px`;
-    panel.style.height = `${newHeight}px`;
     panel.style.maxHeight = `${maxHeight}px`;
   });
 
@@ -363,10 +351,6 @@ export function createMeshToolbar({
 
   resizeHandle.addEventListener("pointerup", stopResize);
   resizeHandle.addEventListener("pointercancel", stopResize);
-
-  resizeHandle.addEventListener("lostpointercapture", () => {
-    resizeState = null;
-  });
 
   function createSection(key, title) {
     const section = document.createElement("div");
@@ -451,40 +435,31 @@ export function createMeshToolbar({
     { callback: () => setMultiSelect(!multiSelect) }
   );
 
-  // 左右対称編集
+  // 左右対称
   const mirrorContent = createSection("mirror", "◐ 左右対称編集");
-
   let mirrorXEnabled = false;
 
   const mirrorButton = createButton(
     mirrorContent,
     "左右対称編集：OFF",
     null,
-    {
-      callback: () => setMirrorX(!mirrorXEnabled)
-    }
+    { callback: () => setMirrorX(!mirrorXEnabled) }
   );
 
   const mirrorDescription = document.createElement("div");
   mirrorDescription.className = "mesh-mirror-description";
   mirrorDescription.textContent =
-    "X軸を中心に反対側の頂点も同じように編集します。";
-
+    "X軸を中心に反対側も同じように編集します。";
   mirrorContent.appendChild(mirrorDescription);
 
   function setMirrorX(value) {
     mirrorXEnabled = Boolean(value);
-
     mirrorButton.textContent = mirrorXEnabled
       ? "左右対称編集：ON"
       : "左右対称編集：OFF";
 
     mirrorButton.classList.toggle("active", mirrorXEnabled);
-    mirrorButton.setAttribute(
-      "aria-pressed",
-      String(mirrorXEnabled)
-    );
-
+    mirrorButton.setAttribute("aria-pressed", String(mirrorXEnabled));
     onMirrorChange?.(mirrorXEnabled);
   }
 
@@ -531,7 +506,6 @@ export function createMeshToolbar({
     input.id = `mesh-transform-${axis.toLowerCase()}`;
 
     label.htmlFor = input.id;
-
     field.append(label, input);
     transformFields.appendChild(field);
     inputs[axis.toLowerCase()] = input;
@@ -606,7 +580,7 @@ export function createMeshToolbar({
     onAction?.(`transform:${transformMode}:${values.join(",")}`);
   }
 
-  // スカルプト設定
+  // スカルプト
   const sculptContent = createSection("sculpt", "🎨 スカルプト");
 
   let sculptEnabled = false;
@@ -616,30 +590,8 @@ export function createMeshToolbar({
     sculptContent,
     "ブラシモード：OFF",
     null,
-    {
-      callback: () => setSculptEnabled(!sculptEnabled)
-    }
+    { callback: () => setSculptEnabled(!sculptEnabled) }
   );
-
-  function setSculptEnabled(value) {
-    sculptEnabled = Boolean(value);
-
-    sculptModeButton.textContent = sculptEnabled
-      ? "ブラシモード：ON"
-      : "ブラシモード：OFF";
-
-    sculptModeButton.classList.toggle("active", sculptEnabled);
-    sculptModeButton.setAttribute(
-      "aria-pressed",
-      String(sculptEnabled)
-    );
-
-    statusElement.textContent = sculptEnabled
-      ? "スカルプトブラシでモデルをなぞれます"
-      : `${currentMode.toUpperCase()} モード`;
-
-    onSculptModeChange?.(sculptEnabled, sculptMode);
-  }
 
   const sculptPanel = document.createElement("div");
   sculptPanel.className = "mesh-transform-panel";
@@ -683,6 +635,38 @@ export function createMeshToolbar({
 
   const sculptButtons = {};
 
+  const sculptNames = {
+    pushpull: "↗ 押し出し・へこませる",
+    smooth: "〰 なめらか化",
+    inflate: "◉ 膨らませる"
+  };
+
+  function notifySculptSettings() {
+    onSculptModeChange?.(
+      sculptEnabled,
+      sculptMode,
+      Number(sculptRadiusInput.value),
+      Number(sculptStrengthInput.value)
+    );
+  }
+
+  function setSculptEnabled(value) {
+    sculptEnabled = Boolean(value);
+
+    sculptModeButton.textContent = sculptEnabled
+      ? "ブラシモード：ON"
+      : "ブラシモード：OFF";
+
+    sculptModeButton.classList.toggle("active", sculptEnabled);
+    sculptModeButton.setAttribute("aria-pressed", String(sculptEnabled));
+
+    notifySculptSettings();
+
+    statusElement.textContent = sculptEnabled
+      ? "モデル表面を指でなぞって彫れます"
+      : `${currentMode.toUpperCase()} モード`;
+  }
+
   function setSculptMode(mode) {
     if (!["pushpull", "smooth", "inflate"].includes(mode)) return;
 
@@ -692,47 +676,42 @@ export function createMeshToolbar({
       button.classList.toggle("active", key === mode);
     }
 
-    statusElement.textContent =
-      `スカルプト：${mode}`;
-
-    onSculptModeChange?.(sculptEnabled, sculptMode);
+    notifySculptSettings();
+    statusElement.textContent = `スカルプト：${mode}`;
   }
 
   sculptButtons.pushpull = createButton(
     sculptPanel,
-    "↗ 押し出し・へこませる",
+    sculptNames.pushpull,
     null,
-    {
-      callback: () => setSculptMode("pushpull")
-    }
+    { callback: () => setSculptMode("pushpull") }
   );
 
   sculptButtons.smooth = createButton(
     sculptPanel,
-    "〰 なめらか化",
+    sculptNames.smooth,
     null,
-    {
-      callback: () => setSculptMode("smooth")
-    }
+    { callback: () => setSculptMode("smooth") }
   );
 
   sculptButtons.inflate = createButton(
     sculptPanel,
-    "◉ 膨らませる",
+    sculptNames.inflate,
     null,
-    {
-      callback: () => setSculptMode("inflate")
-    }
+    { callback: () => setSculptMode("inflate") }
   );
+
+  sculptRadiusInput.addEventListener("input", notifySculptSettings);
+  sculptStrengthInput.addEventListener("input", notifySculptSettings);
 
   const sculptHint = document.createElement("div");
   sculptHint.className = "mesh-transform-hint";
   sculptHint.textContent =
-    "ブラシモードをONにして、モデルの表面を指でなぞります。";
+    "ブラシモードをONにして、モデル表面を指でなぞります。";
 
   sculptPanel.appendChild(sculptHint);
   sculptContent.appendChild(sculptPanel);
-  
+
   // メッシュ編集
   const editContent = createSection("edit", "✂ メッシュ編集");
 
@@ -811,9 +790,7 @@ export function createMeshToolbar({
     gizmoContent,
     "XYZギズモ：ON",
     null,
-    {
-      callback: () => setGizmoVisible(!gizmoVisible)
-    }
+    { callback: () => setGizmoVisible(!gizmoVisible) }
   );
 
   function setGizmoVisible(value) {
@@ -902,6 +879,8 @@ export function createMeshToolbar({
 
   setMode("vertex");
   setTransformMode("move");
+  setSculptMode("pushpull");
+  notifySculptSettings();
 
   return {
     element: root,
@@ -910,6 +889,8 @@ export function createMeshToolbar({
     setEditing,
     setGizmoVisible,
     setMirrorX,
+    setSculptEnabled,
+    setSculptMode,
 
     dispose() {
       document.removeEventListener("pointerdown", handleOutsideClick);
