@@ -568,9 +568,53 @@ export function createMeshToolbar({
     className: "primary"
   });
 
-  createButton(editContent, "⬆ 押し出し", "extrude", {
-    className: "primary"
-  });
+    const extrudePanel = document.createElement("div");
+  extrudePanel.className = "mesh-transform-panel";
+
+  const extrudeLabel = document.createElement("label");
+  extrudeLabel.textContent = "押し出す距離";
+  extrudeLabel.style.color = "#c0c8d8";
+
+  const extrudeDistanceInput = document.createElement("input");
+  extrudeDistanceInput.type = "number";
+  extrudeDistanceInput.step = "0.1";
+  extrudeDistanceInput.inputMode = "decimal";
+  extrudeDistanceInput.value = "0.2";
+  extrudeDistanceInput.style.width = "100%";
+  extrudeDistanceInput.style.height = "40px";
+  extrudeDistanceInput.style.boxSizing = "border-box";
+  extrudeDistanceInput.style.background = "#303642";
+  extrudeDistanceInput.style.color = "white";
+  extrudeDistanceInput.style.border = "1px solid #50596b";
+  extrudeDistanceInput.style.borderRadius = "7px";
+  extrudeDistanceInput.style.padding = "6px";
+
+  const extrudeApplyButton = createButton(
+    extrudePanel,
+    "⬆ この距離で押し出し",
+    null,
+    {
+      className: "mesh-transform-apply",
+      callback: () => {
+        const distance = Number(extrudeDistanceInput.value);
+
+        if (!Number.isFinite(distance)) {
+          statusElement.textContent = "正しい距離を入力してください";
+          return;
+        }
+
+        onAction?.(`extrude:${distance}`);
+      }
+    }
+  );
+
+  extrudePanel.append(
+    extrudeLabel,
+    extrudeDistanceInput,
+    extrudeApplyButton
+  );
+
+  editContent.appendChild(extrudePanel);
 
   createButton(editContent, "＋ 頂点追加", "addVertex", {
     disabled: true
