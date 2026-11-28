@@ -627,20 +627,16 @@ function runMeshAction(action) {
     return;
   }
 
-  if (action === "extrude") {
+    if (action.startsWith("extrude:")) {
     if (selection.faces.length === 0) {
       alert("押し出す面を選択してください。");
       return;
     }
 
-    const answer = window.prompt("押し出す距離を入力してください。", "0.2");
-
-    if (answer === null) return;
-
-    const distance = Number(answer);
+    const distance = Number(action.slice("extrude:".length));
 
     if (!Number.isFinite(distance)) {
-      alert("正しい数値を入力してください。");
+      alert("正しい押し出し距離を入力してください。");
       return;
     }
 
@@ -649,16 +645,16 @@ function runMeshAction(action) {
     return;
   }
 
-  if (action === "delete") {
-    const hasSelection =
-      selection.vertices.length > 0 ||
-      selection.edges.length > 0 ||
-      selection.faces.length > 0;
-
-    if (!hasSelection) {
-      alert("削除する頂点・辺・面を選択してください。");
+  if (action === "extrude") {
+    if (selection.faces.length === 0) {
+      alert("押し出す面を選択してください。");
       return;
     }
+
+    meshHistory.save();
+    meshEditCommands.extrudeSelectedFaces(0.2);
+    return;
+  }
 
     meshHistory.save();
     meshEditCommands.deleteSelection();
