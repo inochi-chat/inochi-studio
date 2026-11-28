@@ -11,6 +11,8 @@ import { createObjectHierarchy } from "./objects/object-hierarchy.js";
 import { createHierarchyOrder } from "./objects/hierarchy-order.js";
 import { createObjectVisibility } from "./objects/object-visibility.js";
 import { createObjectLock } from "./objects/object-lock.js";
+import { createObjectGroup } from "./objects/object-group.js";
+import { createDuplicateButton } from "./objects/duplicate-button.js";
 
 import { createNameEditor } from "./properties/name.js";
 import { createPositionEditor } from "./properties/position.js";
@@ -25,8 +27,8 @@ import { createMultiSelectionController } from "./selection/multi-selection-cont
 import { createMultiSelectionMode } from "./selection/multi-selection-mode.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
+
 import { createHistoryManager } from "./history/history-manager.js";
-import { createObjectGroup } from "./objects/object-group.js";
 
 import {
   createAddObjectCommand,
@@ -45,17 +47,16 @@ import {
   createMoveHierarchyObjectCommand
 } from "./history/hierarchy-order-commands.js";
 
-import {
-  createVisibilityCommand
-} from "./history/visibility-command.js";
+import { createVisibilityCommand } from "./history/visibility-command.js";
+import { createLockCommand } from "./history/lock-command.js";
 
 import {
-  createLockCommand
-} from "./history/lock-command.js";
+  createGroupCommand,
+  createUngroupCommand,
+  createRenameGroupCommand,
+  createDeleteGroupCommand
+} from "./history/group-commands.js";
 
-import { createDuplicateButton } from "./objects/duplicate-button.js";
-
-// メッシュ編集
 import { createMeshEditor } from "./tools/mesh-editor.js";
 import { createMeshOperations } from "./tools/mesh-operations.js";
 import { createMeshTopology } from "./tools/mesh-topology.js";
@@ -65,6 +66,7 @@ import { createMeshEditCommands } from "./tools/mesh-edit-commands.js";
 import { createMeshHistory } from "./tools/mesh-history.js";
 import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 import { createMeshGizmo } from "./tools/mesh-gizmo.js";
+
 import { createMeshSculptController } from "./app/mesh-sculpt.js";
 
 // =====================================================
@@ -90,13 +92,11 @@ if (
   throw new Error("3DエディターのHTML要素が見つかりません");
 }
 
-
 // =====================================================
 // 2. エディター初期化
 // =====================================================
 
 const { scene, camera, renderer } = initializeEditor(canvas);
-
 
 // =====================================================
 // 3. 管理システム
@@ -115,7 +115,6 @@ const history = createHistoryManager(100);
 
 let meshEditing = false;
 
-
 // =====================================================
 // 4. 複数選択システム
 // =====================================================
@@ -128,7 +127,6 @@ function getSelectedObject() {
   return objectManager.getSelected();
 }
 
-
 // =====================================================
 // 5. ロック確認
 // =====================================================
@@ -139,9 +137,7 @@ function isObjectEffectivelyLocked(object) {
   let current = object;
 
   while (current && current !== scene) {
-    if (objectLock.isLocked(current)) {
-      return true;
-    }
+    if (objectLock.isLocked(current)) return true;
 
     if (
       objectGroup.isGroup(current) &&
@@ -155,7 +151,6 @@ function isObjectEffectivelyLocked(object) {
 
   return false;
 }
-
 
 // =====================================================
 // 6. UI更新
@@ -183,7 +178,6 @@ function refreshEditorUI() {
   updateHierarchy();
 }
 
-
 // =====================================================
 // 7. カメラ操作
 // =====================================================
@@ -191,7 +185,6 @@ function refreshEditorUI() {
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
-
 
 // =====================================================
 // 8. 変形ツール
@@ -209,7 +202,6 @@ const transform = createTransformTool(
 transform.addEventListener("mouseUp", () => {
   refreshProperties();
 });
-
 
 // =====================================================
 // 9. メッシュ編集システム
@@ -235,7 +227,6 @@ let activeMesh = null;
 let meshSelectionMode = "vertex";
 let meshMultiSelect = false;
 
-// ギズモ表示状態
 let meshGizmoVisible = true;
 
 let meshSculptEnabled = false;
@@ -243,6 +234,26 @@ let meshSculptMode = "pushpull";
 let meshSculptRadius = 0.5;
 let meshSculptStrength = 0.1;
 
+// スカルプト処理を専用モジュールに任せる
+const meshSculptController = createMeshSculptController({
+  getOperations: () => meshOperations,
+  getHistory: () => meshHistory,
+  isEditing: () => meshEditing,
+  isEnabled: () => meshSculptEnabled,
+  getRadius: () => meshSculptRadius,
+  getStrength: () => meshSculptStrength,
+  getMode: () => meshSculptMode,
+
+  onStrokeEnd(changed) {
+    if (!changed) return;
+
+    requestAnimationFrame(() => {
+      if (meshEditing && activeMesh) {
+        rebuildMeshTools();
+      }
+    });
+  }
+});
 
 // メッシュ編集用の選択・表示を再構築
 function rebuildMeshTools() {
@@ -263,7 +274,6 @@ function rebuildMeshTools() {
     topology: meshTopology
   });
 
-  // XYZ移動ギズモを作成
   meshGizmo = createMeshGizmo({
     scene,
     camera,
@@ -276,139 +286,59 @@ function rebuildMeshTools() {
     orbitControls: orbit
   });
 
-  // 保存されている表示設定を反映
   meshGizmo.setVisible(meshGizmoVisible);
 
   meshPicker = createMeshPicker({
-  camera,
-  renderer,
-  orbitControls: orbit,
-  mesh: activeMesh,
-  topology: meshTopology,
-  visuals: meshVisuals,
-  meshEditor,
+    camera,
+    renderer,
+    orbitControls: orbit,
+    mesh: activeMesh,
+    topology: meshTopology,
+    visuals: meshVisuals,
+    meshEditor,
 
-  onSelectionChange(selection) {
-    const vertexIds = new Set();
+    onSelectionChange(selection) {
+      const vertexIds = new Set();
 
-    for (const id of selection.vertices) {
-      vertexIds.add(id);
-    }
-
-    for (const id of selection.edges) {
-      const edge = meshTopology.getEdge(id);
-      if (!edge) continue;
-
-      for (const vertexId of edge.vertices) {
-        vertexIds.add(vertexId);
+      for (const id of selection.vertices) {
+        vertexIds.add(id);
       }
-    }
 
-    for (const id of selection.faces) {
-      const face = meshTopology.getFace(id);
-      if (!face) continue;
+      for (const id of selection.edges) {
+        const edge = meshTopology.getEdge(id);
+        if (!edge) continue;
 
-      for (const vertexId of face.vertices) {
-        vertexIds.add(vertexId);
+        for (const vertexId of edge.vertices) {
+          vertexIds.add(vertexId);
+        }
       }
-    }
 
-    meshEditor.setSelectedVertices([...vertexIds]);
-    meshGizmo?.update([...vertexIds]);
-  },
+      for (const id of selection.faces) {
+        const face = meshTopology.getFace(id);
+        if (!face) continue;
 
-  onSculptStroke(stroke) {
-    if (!stroke) return;
-
-    if (stroke.phase === "start") {
-      meshSculptStrokeSaved = false;
-      meshSculptStrokeChanged = false;
-      applySculptStroke(stroke);
-      return;
-    }
-
-    if (stroke.phase === "move") {
-      applySculptStroke(stroke);
-      return;
-    }
-
-    if (
-      stroke.phase === "end" ||
-      stroke.phase === "cancel"
-    ) {
-      const changed = meshSculptStrokeChanged;
-
-      meshSculptStrokeSaved = false;
-      meshSculptStrokeChanged = false;
-
-      if (changed) {
-        requestAnimationFrame(() => {
-          if (meshEditing && activeMesh) {
-            rebuildMeshTools();
-          }
-        });
+        for (const vertexId of face.vertices) {
+          vertexIds.add(vertexId);
+        }
       }
-    }
-  }
-});
 
-meshPicker.setMode(meshSelectionMode);
-meshPicker.setMultiSelect(meshMultiSelect);
-meshPicker.setSculptMode(meshSculptEnabled, meshSculptMode);
+      meshEditor.setSelectedVertices([...vertexIds]);
+      meshGizmo?.update([...vertexIds]);
+    },
+
+    onSculptStroke(stroke) {
+      meshSculptController.handleStroke(stroke);
+    }
+  });
+
+  meshPicker.setMode(meshSelectionMode);
+  meshPicker.setMultiSelect(meshMultiSelect);
+  meshPicker.setSculptMode(meshSculptEnabled, meshSculptMode);
 
   meshEditor.refreshVertexPositions();
   meshEditor.clearSelection();
 
-  // 選択解除後はギズモも非表示
   meshGizmo?.update([]);
-}
-
-// =====================================================
-// 連続スカルプトブラシ
-// =====================================================
-
-function applySculptStroke(stroke) {
-  if (!meshEditing || !activeMesh || !meshSculptEnabled) {
-    return;
-  }
-
-  const point = stroke.point;
-
-  if (
-    !point ||
-    !Number.isFinite(point.x) ||
-    !Number.isFinite(point.y) ||
-    !Number.isFinite(point.z)
-  ) {
-    return;
-  }
-
-  if (
-    !Number.isFinite(meshSculptRadius) ||
-    meshSculptRadius <= 0 ||
-    !Number.isFinite(meshSculptStrength)
-  ) {
-    return;
-  }
-
-  // ストローク中の最初の変更前にだけ履歴保存
-  if (!meshSculptStrokeSaved) {
-    meshHistory?.save();
-    meshSculptStrokeSaved = true;
-  }
-
-  const mode = stroke.mode || meshSculptMode;
-
-  const success = meshOperations.sculptAt(
-    point,
-    meshSculptRadius,
-    meshSculptStrength,
-    mode
-  );
-
-  if (success) {
-    meshSculptStrokeChanged = true;
-  }
 }
 
 // メッシュ編集終了
@@ -418,6 +348,7 @@ function exitMeshEditMode() {
   const previousMesh = activeMesh;
 
   meshEditing = false;
+  meshSculptController.resetStroke();
 
   meshPicker?.dispose();
   meshVisuals?.dispose();
@@ -448,7 +379,6 @@ function exitMeshEditMode() {
 
   refreshProperties();
 }
-
 
 // メッシュ編集開始
 function enterMeshEditMode() {
@@ -537,7 +467,6 @@ function enterMeshEditMode() {
   propertyPanel.appendChild(message);
 }
 
-
 // 数値入力
 function askVector(title, defaultValue) {
   const answer = window.prompt(
@@ -560,16 +489,12 @@ function askVector(title, defaultValue) {
   return values;
 }
 
-
 // メッシュ編集操作
 function runMeshAction(action) {
   if (!meshEditing || !meshPicker || !meshHistory) return;
 
-  // 数値入力パネルからの変形
   if (action.startsWith("transform:")) {
     const [, transformMode, rawValues] = action.split(":");
-
-    const selection = meshPicker.getSelection();
     const values = rawValues.split(",").map(Number);
 
     if (
@@ -594,10 +519,7 @@ function runMeshAction(action) {
     }
 
     if (transformMode === "rotate") {
-      const radians = values.map(
-        value => value * Math.PI / 180
-      );
-
+      const radians = values.map(value => value * Math.PI / 180);
       success = meshOperations.rotate(...radians);
     }
 
@@ -614,7 +536,6 @@ function runMeshAction(action) {
     return;
   }
 
-  // スカルプト操作
   if (action.startsWith("sculpt:")) {
     const [, mode, rawRadius, rawStrength] = action.split(":");
 
@@ -750,7 +671,6 @@ function runMeshAction(action) {
     return;
   }
 
-  // 数値入力された距離で押し出し
   if (action.startsWith("extrude:")) {
     if (selection.faces.length === 0) {
       alert("押し出す面を選択してください。");
@@ -769,7 +689,6 @@ function runMeshAction(action) {
     return;
   }
 
-  // 距離指定がない場合の標準押し出し
   if (action === "extrude") {
     if (selection.faces.length === 0) {
       alert("押し出す面を選択してください。");
@@ -788,9 +707,8 @@ function runMeshAction(action) {
   }
 }
 
-
 // =====================================================
-// メッシュツールバー
+// 10. メッシュツールバー
 // =====================================================
 
 const meshToolbar = createMeshToolbar({
@@ -810,18 +728,15 @@ const meshToolbar = createMeshToolbar({
     runMeshAction(action);
   },
 
-  // XYZギズモ表示・非表示
   onGizmoVisibilityChange(visible) {
     meshGizmoVisible = visible;
     meshGizmo?.setVisible(visible);
   },
 
-  // 左右対称編集
   onMirrorChange(enabled) {
     meshOperations.setMirrorX(enabled);
   },
 
-  // スカルプト設定
   onSculptModeChange(enabled, mode, radius, strength) {
     meshSculptEnabled = enabled;
     meshSculptMode = mode;
@@ -844,9 +759,8 @@ const meshToolbar = createMeshToolbar({
 meshToolbar.setEditing(false);
 meshToolbarContainer.hidden = true;
 
-
 // =====================================================
-// 10. プロパティ表示
+// 11. プロパティ表示
 // =====================================================
 
 function refreshProperties() {
@@ -887,25 +801,19 @@ function refreshProperties() {
   const inner = document.createElement("div");
   inner.className = "properties-inner";
 
-  if (true) {
-    const meshEditButton = document.createElement("button");
+  const meshEditButton = document.createElement("button");
 
-    meshEditButton.type = "button";
-    meshEditButton.textContent = "🔷 メッシュ編集（Edit Mode）";
+  meshEditButton.type = "button";
+  meshEditButton.textContent = "🔷 メッシュ編集（Edit Mode）";
+  meshEditButton.style.width = "100%";
+  meshEditButton.style.minHeight = "48px";
+  meshEditButton.style.marginBottom = "12px";
+  meshEditButton.style.fontSize = "15px";
+  meshEditButton.style.fontWeight = "bold";
+  meshEditButton.style.cursor = "pointer";
 
-    meshEditButton.style.width = "100%";
-    meshEditButton.style.minHeight = "48px";
-    meshEditButton.style.marginBottom = "12px";
-    meshEditButton.style.fontSize = "15px";
-    meshEditButton.style.fontWeight = "bold";
-    meshEditButton.style.cursor = "pointer";
-
-    meshEditButton.addEventListener("click", () => {
-      enterMeshEditMode();
-    });
-
-    inner.appendChild(meshEditButton);
-  }
+  meshEditButton.addEventListener("click", enterMeshEditMode);
+  inner.appendChild(meshEditButton);
 
   inner.appendChild(createNameEditor(object, refreshEditorUI));
   inner.appendChild(createPositionEditor(object, refreshEditorUI));
@@ -916,9 +824,8 @@ function refreshProperties() {
   propertyPanel.appendChild(inner);
 }
 
-
 // =====================================================
-// 11. メイン選択の更新
+// 12. メイン選択の更新
 // =====================================================
 
 function selectPrimaryObject(object, selectedObjects = null) {
@@ -947,9 +854,8 @@ function selectPrimaryObject(object, selectedObjects = null) {
   refreshProperties();
 }
 
-
 // =====================================================
-// 12. 複数選択の管理
+// 13. 複数選択の管理
 // =====================================================
 
 const multiSelectionController = createMultiSelectionController({
@@ -966,9 +872,8 @@ const multiSelectionController = createMultiSelectionController({
   }
 });
 
-
 // =====================================================
-// 13. 通常の単体選択
+// 14. 通常の単体選択
 // =====================================================
 
 function selectObject(object) {
@@ -983,9 +888,8 @@ function selectObject(object) {
   multiSelectionController.select(object, false);
 }
 
-
 // =====================================================
-// 14. オブジェクト一覧
+// 15. オブジェクト一覧
 // =====================================================
 
 objectListView = createObjectList(
@@ -993,9 +897,8 @@ objectListView = createObjectList(
   selectObject
 );
 
-
 // =====================================================
-// 15. グループ選択
+// 16. グループ選択
 // =====================================================
 
 function selectGroup(group) {
@@ -1003,20 +906,16 @@ function selectGroup(group) {
   if (!group || !objectGroup.isGroup(group)) return;
 
   multiSelectionController.clear();
-
   activeGroup = group;
-
   objectManager.select(null);
-
   transform.attach(group);
 
   refreshEditorUI();
   refreshProperties();
 }
 
-
 // =====================================================
-// 16. グループ名変更
+// 17. グループ名変更
 // =====================================================
 
 function renameGroup(group, newName) {
@@ -1037,9 +936,8 @@ function renameGroup(group, newName) {
   history.execute(command);
 }
 
-
 // =====================================================
-// 17. 階層UI
+// 18. 階層UI
 // =====================================================
 
 hierarchyUI = createHierarchyUI({
@@ -1064,9 +962,8 @@ hierarchyUI = createHierarchyUI({
   onRenameGroup: renameGroup
 });
 
-
 // =====================================================
-// 18. 履歴変更時
+// 19. 履歴変更時
 // =====================================================
 
 function onHistoryChange(object) {
@@ -1076,9 +973,8 @@ function onHistoryChange(object) {
   selectObject(object);
 }
 
-
 // =====================================================
-// 19. オブジェクト追加
+// 20. オブジェクト追加
 // =====================================================
 
 function addObject(type) {
@@ -1109,9 +1005,8 @@ function addCylinder() {
   addObject("cylinder");
 }
 
-
 // =====================================================
-// 20. オブジェクト削除
+// 21. オブジェクト削除
 // =====================================================
 
 function deleteSelectedObject() {
@@ -1191,9 +1086,8 @@ function deleteSelectedObject() {
   refreshProperties();
 }
 
-
 // =====================================================
-// 21. オブジェクト複製
+// 22. オブジェクト複製
 // =====================================================
 
 function duplicateSelectedObject() {
@@ -1246,9 +1140,8 @@ function duplicateSelectedObject() {
   refreshProperties();
 }
 
-
 // =====================================================
-// 22. 複製ボタン
+// 23. 複製ボタン
 // =====================================================
 
 createDuplicateButton({
@@ -1257,9 +1150,8 @@ createDuplicateButton({
   onDuplicate: duplicateSelectedObject
 });
 
-
 // =====================================================
-// 23. グループ化
+// 24. グループ化
 // =====================================================
 
 function groupSelectedObjects() {
@@ -1317,9 +1209,8 @@ function groupSelectedObjects() {
   history.execute(command);
 }
 
-
 // =====================================================
-// 24. グループ解除
+// 25. グループ解除
 // =====================================================
 
 function ungroupSelectedObject() {
@@ -1361,9 +1252,8 @@ function ungroupSelectedObject() {
   }
 }
 
-
 // =====================================================
-// 25. グループ操作ボタン
+// 26. グループ操作ボタン
 // =====================================================
 
 document
@@ -1374,9 +1264,8 @@ document
   .querySelector("#ungroupObjects")
   ?.addEventListener("click", ungroupSelectedObject);
 
-
 // =====================================================
-// 26. 親子関係の設定
+// 27. 親子関係の設定
 // =====================================================
 
 function setObjectParent(child, parent) {
@@ -1410,9 +1299,8 @@ function setObjectParent(child, parent) {
   }
 }
 
-
 // =====================================================
-// 27. 親子関係の解除
+// 28. 親子関係の解除
 // =====================================================
 
 function removeObjectParent(child) {
@@ -1437,9 +1325,8 @@ function removeObjectParent(child) {
   }
 }
 
-
 // =====================================================
-// 28. 階層の並び替え
+// 29. 階層の並び替え
 // =====================================================
 
 function moveHierarchyObject(object, target, position) {
@@ -1452,12 +1339,9 @@ function moveHierarchyObject(object, target, position) {
     return;
   }
 
-  if (!hierarchyOrder.canMove(object, target)) {
-    return;
-  }
+  if (!hierarchyOrder.canMove(object, target)) return;
 
   const siblings = hierarchyOrder.getSiblings(object);
-
   const oldIndex = hierarchyOrder.getIndex(object);
   const targetIndex = siblings.indexOf(target);
 
@@ -1466,9 +1350,7 @@ function moveHierarchyObject(object, target, position) {
   let newIndex = targetIndex +
     (position === "after" ? 1 : 0);
 
-  if (oldIndex < newIndex) {
-    newIndex--;
-  }
+  if (oldIndex < newIndex) newIndex--;
 
   if (oldIndex === newIndex) return;
 
@@ -1484,9 +1366,8 @@ function moveHierarchyObject(object, target, position) {
   }
 }
 
-
 // =====================================================
-// 29. 表示・非表示の変更
+// 30. 表示・非表示の変更
 // =====================================================
 
 function handleVisibilityChange(object, newVisible) {
@@ -1504,9 +1385,8 @@ function handleVisibilityChange(object, newVisible) {
   }
 }
 
-
 // =====================================================
-// 30. ロック・ロック解除
+// 31. ロック・ロック解除
 // =====================================================
 
 function handleLockChange(object, newLocked) {
@@ -1539,9 +1419,8 @@ function handleLockChange(object, newLocked) {
   }
 }
 
-
 // =====================================================
-// 31. 複数選択モード
+// 32. 複数選択モード
 // =====================================================
 
 function updateMultiSelectionButton() {
@@ -1575,9 +1454,8 @@ multiSelectionButton?.addEventListener("click", () => {
 
 updateMultiSelectionButton();
 
-
 // =====================================================
-// 32. Undo・Redo
+// 33. Undo・Redo
 // =====================================================
 
 function undo() {
@@ -1598,9 +1476,8 @@ function redo() {
   history.redo();
 }
 
-
 // =====================================================
-// 33. 3D画面からの通常選択
+// 34. 3D画面からの通常選択
 // =====================================================
 
 const objectSelection = createObjectSelection({
@@ -1618,9 +1495,8 @@ const objectSelection = createObjectSelection({
   }
 });
 
-
 // =====================================================
-// 34. ボタン接続
+// 35. ボタン接続
 // =====================================================
 
 document.querySelector("#addCube")
@@ -1656,9 +1532,8 @@ document.querySelector("#undoButton")
 document.querySelector("#redoButton")
   ?.addEventListener("click", redo);
 
-
 // =====================================================
-// 35. キーボードショートカット
+// 36. キーボードショートカット
 // =====================================================
 
 document.addEventListener("keydown", event => {
@@ -1690,9 +1565,8 @@ document.addEventListener("keydown", event => {
   }
 });
 
-
 // =====================================================
-// 36. 初期キューブ
+// 37. 初期キューブ
 // =====================================================
 
 const initialCubeGeometry = createGeometry("cube");
@@ -1706,9 +1580,8 @@ if (initialCube) {
   selectObject(initialCube);
 }
 
-
 // =====================================================
-// 37. 描画ループ
+// 38. 描画ループ
 // =====================================================
 
 function animate() {
