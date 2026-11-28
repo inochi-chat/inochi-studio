@@ -15,9 +15,9 @@ export function createMeshToolbar({
     .mesh-toolbar {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       width: 100%;
-      padding: 12px;
+      padding: 9px;
       box-sizing: border-box;
       background: #20232b;
       color: #f4f5f7;
@@ -27,16 +27,54 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar-section {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
+      border: 1px solid #414653;
+      border-radius: 9px;
+      overflow: hidden;
+      background: #191d25;
     }
 
-    .mesh-toolbar-title {
-      font-size: 12px;
+    .mesh-toolbar-heading {
+      width: 100%;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 13px;
+      border: 0;
+      border-radius: 0;
+      background: #303642;
+      color: #f4f5f7;
+      font-size: 13px;
       font-weight: bold;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .mesh-toolbar-heading:active {
+      transform: none;
+      background: #3b4657;
+    }
+
+    .mesh-toolbar-arrow {
       color: #aeb7c8;
-      letter-spacing: .05em;
+      font-size: 16px;
+      transition: transform .15s;
+    }
+
+    .mesh-toolbar-section.open .mesh-toolbar-arrow {
+      transform: rotate(90deg);
+    }
+
+    .mesh-toolbar-content {
+      display: none;
+      flex-direction: column;
+      gap: 9px;
+      padding: 10px;
+    }
+
+    .mesh-toolbar-section.open .mesh-toolbar-content {
+      display: flex;
     }
 
     .mesh-toolbar-row {
@@ -45,7 +83,7 @@ export function createMeshToolbar({
       gap: 7px;
     }
 
-    .mesh-toolbar button {
+    .mesh-toolbar button:not(.mesh-toolbar-heading) {
       min-height: 44px;
       min-width: 58px;
       padding: 9px 12px;
@@ -59,11 +97,11 @@ export function createMeshToolbar({
       touch-action: manipulation;
     }
 
-    .mesh-toolbar button:active {
+    .mesh-toolbar button:active:not(.mesh-toolbar-heading) {
       transform: scale(.97);
     }
 
-    .mesh-toolbar button.active {
+    .mesh-toolbar button.active:not(.mesh-toolbar-heading) {
       background: #2866d8;
       border-color: #78a6ff;
       color: white;
@@ -75,24 +113,19 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar button.danger {
-      background: #592f38;
-      border-color: #9b4d5c;
+      background: #592f38 !important;
+      border-color: #9b4d5c !important;
     }
 
     .mesh-toolbar button.primary {
-      background: #245b9e;
-      border-color: #548bd0;
-    }
-
-    .mesh-toolbar-divider {
-      height: 1px;
-      background: #414653;
-      width: 100%;
+      background: #245b9e !important;
+      border-color: #548bd0 !important;
     }
 
     .mesh-toolbar-status {
       font-size: 12px;
       color: #aeb7c8;
+      padding: 4px 2px;
     }
 
     .mesh-transform-panel {
@@ -103,16 +136,6 @@ export function createMeshToolbar({
       border: 1px solid #414b5c;
       border-radius: 10px;
       background: #191d25;
-    }
-
-    .mesh-transform-tabs {
-      display: flex;
-      gap: 6px;
-    }
-
-    .mesh-transform-tabs button {
-      flex: 1;
-      min-width: 0;
     }
 
     .mesh-transform-fields {
@@ -161,11 +184,16 @@ export function createMeshToolbar({
 
     @media (max-width: 600px) {
       .mesh-toolbar {
-        padding: 9px;
-        gap: 9px;
+        padding: 7px;
+        gap: 7px;
       }
 
-      .mesh-toolbar button {
+      .mesh-toolbar-heading {
+        min-height: 48px;
+        font-size: 14px;
+      }
+
+      .mesh-toolbar button:not(.mesh-toolbar-heading) {
         flex: 1 1 auto;
         min-width: 70px;
         min-height: 46px;
@@ -189,21 +217,39 @@ export function createMeshToolbar({
 
   const sections = {};
 
-  function createSection(title) {
+  function createSection(key, title) {
     const section = document.createElement("div");
     section.className = "mesh-toolbar-section";
+    section.dataset.section = key;
 
-    const heading = document.createElement("div");
-    heading.className = "mesh-toolbar-title";
-    heading.textContent = title;
+    const heading = document.createElement("button");
+    heading.type = "button";
+    heading.className = "mesh-toolbar-heading";
+    heading.setAttribute("aria-expanded", "false");
 
-    const row = document.createElement("div");
-    row.className = "mesh-toolbar-row";
+    const headingText = document.createElement("span");
+    headingText.textContent = title;
 
-    section.append(heading, row);
+    const arrow = document.createElement("span");
+    arrow.className = "mesh-toolbar-arrow";
+    arrow.textContent = "›";
+
+    heading.append(headingText, arrow);
+
+    const content = document.createElement("div");
+    content.className = "mesh-toolbar-content";
+
+    heading.addEventListener("click", () => {
+      const isOpen = section.classList.toggle("open");
+      heading.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    section.append(heading, content);
     root.appendChild(section);
 
-    return row;
+    sections[key] = content;
+
+    return content;
   }
 
   function createButton(parent, label, action, options = {}) {
@@ -237,38 +283,38 @@ export function createMeshToolbar({
   }
 
   // 選択モード
-  sections.modes = createSection("選択モード");
+  const modeContent = createSection("modes", "◆ 選択モード");
 
   const modeButtons = {};
 
   modeButtons.vertex = createButton(
-    sections.modes,
+    modeContent,
     "◆ Vertex",
     null,
     { callback: () => setMode("vertex") }
   );
 
   modeButtons.edge = createButton(
-    sections.modes,
+    modeContent,
     "━ Edge",
     null,
     { callback: () => setMode("edge") }
   );
 
   modeButtons.face = createButton(
-    sections.modes,
+    modeContent,
     "▰ Face",
     null,
     { callback: () => setMode("face") }
   );
 
   // 複数選択
-  sections.selection = createSection("選択設定");
+  const selectionContent = createSection("selection", "☑ 選択設定");
 
   let multiSelect = false;
 
   const multiButton = createButton(
-    sections.selection,
+    selectionContent,
     "複数選択：OFF",
     null,
     {
@@ -277,12 +323,12 @@ export function createMeshToolbar({
   );
 
   // 変形
-  sections.transform = createSection("変形");
+  const transformContent = createSection("transform", "↔ 変形");
 
   const transformButtons = {};
 
   transformButtons.move = createButton(
-    sections.transform,
+    transformContent,
     "↔ 移動",
     null,
     {
@@ -291,7 +337,7 @@ export function createMeshToolbar({
   );
 
   transformButtons.rotate = createButton(
-    sections.transform,
+    transformContent,
     "⟳ 回転",
     null,
     {
@@ -300,7 +346,7 @@ export function createMeshToolbar({
   );
 
   transformButtons.scale = createButton(
-    sections.transform,
+    transformContent,
     "⤢ 拡大・縮小",
     null,
     {
@@ -308,13 +354,12 @@ export function createMeshToolbar({
     }
   );
 
-  // 数値入力パネル
   const transformPanel = document.createElement("div");
   transformPanel.className = "mesh-transform-panel";
 
   const transformHeading = document.createElement("div");
-  transformHeading.className = "mesh-toolbar-title";
-  transformHeading.textContent = "変形数値";
+  transformHeading.className = "mesh-toolbar-status";
+  transformHeading.textContent = "移動量";
 
   const transformFields = document.createElement("div");
   transformFields.className = "mesh-transform-fields";
@@ -359,16 +404,17 @@ export function createMeshToolbar({
   const hint = document.createElement("div");
   hint.className = "mesh-transform-hint";
   hint.textContent =
-    "X・Y・Z の値を入力して適用。移動は距離、回転は度数、拡大縮小は倍率。";
+    "移動は距離、回転は度数、拡大縮小は倍率。";
 
   transformPanel.append(
     transformHeading,
     transformFields,
     applyButton,
-    hint
+    hint,
+    status
   );
 
-  root.appendChild(transformPanel);
+  transformContent.appendChild(transformPanel);
 
   let transformMode = "move";
 
@@ -419,59 +465,46 @@ export function createMeshToolbar({
   }
 
   // メッシュ編集
-  sections.edit = createSection("メッシュ編集");
+  const editContent = createSection("edit", "✂ メッシュ編集");
 
-  createButton(
-    sections.edit,
-    "✂ 分割",
-    "subdivide",
-    { className: "primary" }
-  );
+  createButton(editContent, "✂ 分割", "subdivide", {
+    className: "primary"
+  });
 
-  createButton(
-    sections.edit,
-    "⬆ 押し出し",
-    "extrude",
-    { className: "primary" }
-  );
+  createButton(editContent, "⬆ 押し出し", "extrude", {
+    className: "primary"
+  });
 
-  createButton(
-    sections.edit,
-    "＋ 頂点追加",
-    "addVertex",
-    { disabled: true }
-  );
+  createButton(editContent, "＋ 頂点追加", "addVertex", {
+    disabled: true
+  });
 
-  createButton(
-    sections.edit,
-    "⌫ 削除",
-    "delete",
-    { className: "danger" }
-  );
+  createButton(editContent, "⌫ 削除", "delete", {
+    className: "danger"
+  });
 
   // その他
-  sections.utility = createSection("その他");
+  const utilityContent = createSection("utility", "⚙ その他");
 
-  createButton(sections.utility, "選択解除", "clear");
-  createButton(sections.utility, "↶ 元に戻す", "undo");
-  createButton(sections.utility, "↷ やり直す", "redo");
-
-  const divider = document.createElement("div");
-  divider.className = "mesh-toolbar-divider";
-  root.appendChild(divider);
+  createButton(utilityContent, "選択解除", "clear");
+  createButton(utilityContent, "↶ 元に戻す", "undo");
+  createButton(utilityContent, "↷ やり直す", "redo");
 
   // 編集モード
-  sections.modeControl = createSection("編集モード");
+  const modeControlContent = createSection(
+    "modeControl",
+    "◈ 編集モード"
+  );
 
   const editModeButton = createButton(
-    sections.modeControl,
+    modeControlContent,
     "メッシュ編集",
     "editMode",
     { className: "primary" }
   );
 
   const objectModeButton = createButton(
-    sections.modeControl,
+    modeControlContent,
     "オブジェクトモードに戻る",
     "objectMode"
   );
@@ -479,6 +512,7 @@ export function createMeshToolbar({
   const statusElement = document.createElement("div");
   statusElement.className = "mesh-toolbar-status";
   statusElement.textContent = "Vertex / Edge / Face から選択してね";
+
   root.appendChild(statusElement);
 
   container.replaceChildren(root);
@@ -517,7 +551,6 @@ export function createMeshToolbar({
   function setEditing(value) {
     editing = Boolean(value);
 
-    transformPanel.hidden = !editing;
     editModeButton.classList.toggle("active", editing);
     objectModeButton.classList.toggle("active", !editing);
 
