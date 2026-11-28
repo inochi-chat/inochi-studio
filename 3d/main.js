@@ -282,50 +282,81 @@ function rebuildMeshTools() {
   meshGizmo.setVisible(meshGizmoVisible);
 
   meshPicker = createMeshPicker({
-    camera,
-    renderer,
-    orbitControls: orbit,
-    mesh: activeMesh,
-    topology: meshTopology,
-    visuals: meshVisuals,
-    meshEditor,
+  camera,
+  renderer,
+  orbitControls: orbit,
+  mesh: activeMesh,
+  topology: meshTopology,
+  visuals: meshVisuals,
+  meshEditor,
 
-    onSelectionChange(selection) {
-      const vertexIds = new Set();
+  onSelectionChange(selection) {
+    const vertexIds = new Set();
 
-      for (const id of selection.vertices) {
-        vertexIds.add(id);
-      }
-
-      for (const id of selection.edges) {
-        const edge = meshTopology.getEdge(id);
-
-        if (!edge) continue;
-
-        for (const vertexId of edge.vertices) {
-          vertexIds.add(vertexId);
-        }
-      }
-
-      for (const id of selection.faces) {
-        const face = meshTopology.getFace(id);
-
-        if (!face) continue;
-
-        for (const vertexId of face.vertices) {
-          vertexIds.add(vertexId);
-        }
-      }
-
-      meshEditor.setSelectedVertices([...vertexIds]);
-
-      // 選択範囲の中心にギズモを表示
-      meshGizmo?.update([...vertexIds]);
+    for (const id of selection.vertices) {
+      vertexIds.add(id);
     }
-  });
 
-  meshPicker.setMode(meshSelectionMode);
-  meshPicker.setMultiSelect(meshMultiSelect);
+    for (const id of selection.edges) {
+      const edge = meshTopology.getEdge(id);
+      if (!edge) continue;
+
+      for (const vertexId of edge.vertices) {
+        vertexIds.add(vertexId);
+      }
+    }
+
+    for (const id of selection.faces) {
+      const face = meshTopology.getFace(id);
+      if (!face) continue;
+
+      for (const vertexId of face.vertices) {
+        vertexIds.add(vertexId);
+      }
+    }
+
+    meshEditor.setSelectedVertices([...vertexIds]);
+    meshGizmo?.update([...vertexIds]);
+  },
+
+  onSculptStroke(stroke) {
+    if (!stroke) return;
+
+    if (stroke.phase === "start") {
+      meshSculptStrokeSaved = false;
+      meshSculptStrokeChanged = false;
+      applySculptStroke(stroke);
+      return;
+    }
+
+    if (stroke.phase === "move") {
+      applySculptStroke(stroke);
+      return;
+    }
+
+    if (
+      stroke.phase === "end" ||
+      stroke.phase === "cancel"
+    ) {
+      const changed = meshSculptStrokeChanged;
+
+      meshSculptStrokeSaved = false;
+      meshSculptStrokeChanged = false;
+
+      if (changed) {
+        requestAnimationFrame(() => {
+          if (meshEditing && activeMesh) {
+            rebuildMeshTools();
+          }
+        });
+      }
+    }
+  }
+});
+
+meshPicker.setMode(meshSelectionMode);
+meshPicker.setMultiSelect(meshMultiSelect);
+meshPicker.setSculptMode(meshSculptEnabled, meshSculptMode);
 
   meshEditor.refreshVertexPositions();
   meshEditor.clearSelection();
