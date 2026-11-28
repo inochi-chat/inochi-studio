@@ -65,7 +65,7 @@ import { createMeshEditCommands } from "./tools/mesh-edit-commands.js";
 import { createMeshHistory } from "./tools/mesh-history.js";
 import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 import { createMeshGizmo } from "./tools/mesh-gizmo.js";
-
+import { createMeshSculptController } from "./app/mesh-sculpt.js";
 
 // =====================================================
 // 1. HTML要素
@@ -243,9 +243,7 @@ let meshSculptMode = "pushpull";
 let meshSculptRadius = 0.5;
 let meshSculptStrength = 0.1;
 
-// ブラシ1ストロークにつき履歴を1回だけ保存する
-let meshSculptStrokeSaved = false;
-let meshSculptStrokeChanged = false;
+
 // メッシュ編集用の選択・表示を再構築
 function rebuildMeshTools() {
   if (!activeMesh || !meshEditing) return;
