@@ -148,24 +148,15 @@ export function createMeshEditCommands({
         continue;
       }
 
-      const points = [
-        triangle[0],
-        triangle[1],
-        triangle[2]
-      ];
-
       const boundary = [];
 
       for (let j = 0; j < 3; j++) {
-        const start = points[j];
+        boundary.push(triangle[j].clone());
+
         const edgeId = face.edges[j];
 
-        boundary.push(start.clone());
-
         if (edgeMidpoints.has(edgeId)) {
-          boundary.push(
-            edgeMidpoints.get(edgeId).clone()
-          );
+          boundary.push(edgeMidpoints.get(edgeId).clone());
         }
       }
 
@@ -196,27 +187,83 @@ export function createMeshEditCommands({
     return true;
   }
 
-  // 選択した三角形の面を押し出す
+  // 選択した面をまとまりとして押し出す
   function extrudeSelectedFaces(distance = 0.2) {
     const data = getData();
 
-    if (!data) return false;
+    if (!data || !Number.isFinite(distance)) {
+      return false;
+    }
 
-    const { selection } = data;
+    const { topology, selection } = data;
     const triangles = getTriangles();
 
     const selectedFaces = new Set(
       (selection.faces || []).filter(
         id => Number.isInteger(id) &&
           id >= 0 &&
-          id < triangles.length
+          id < triangles.length &&
+          topology.getFace(id)
       )
     );
 
     if (selectedFaces.size === 0) return false;
 
+    // 選択面ごとの法線を集める
+    const vertexNormals = new Map();
+
+    for (const faceId of selectedFaces) {
+      const face = topology.getFace(faceId);
+      const triangle = triangles[faceId];
+
+      if (!face || !triangle) continue;
+
+      const [a, b, c] = triangle;
+
+      const normal = b.clone()
+        .sub(a)
+        .cross(c.clone().sub(a));
+
+      if (normal.lengthSq() < 0.0000001) continue;
+
+      normal.normalize();
+
+      for (const vertexId of face.vertices) {
+        if (!vertexNormals.has(vertexId)) {
+          vertexNormals.set(
+            vertexId,
+            new THREE.Vector3()
+          );
+        }
+
+        vertexNormals.get(vertexId).add(normal);
+      }
+    }
+
+    if (vertexNormals.size === 0) return false;
+
+    // 選択範囲内の頂点を移動させる
+    for (const normal of vertexNormals.values()) {
+      normal.normalize();
+    }
+
+    function getMovedVertex(vertexId) {
+      const vertex = topology.getVertex(vertexId);
+      const normal = vertexNormals.get(vertexId);
+
+      if (!vertex || !normal) return null;
+
+      return new THREE.Vector3(
+        vertex.position.x,
+        vertex.position.y,
+        vertex.position.z
+      ).addScaledVector(normal, distance);
+    }
+
     const result = [];
 
+    // 選択されていない面はそのまま残す
+    // 選択された面は移動後の位置に作り直す
     for (let i = 0; i < triangles.length; i++) {
       const triangle = triangles[i];
 
@@ -225,31 +272,84 @@ export function createMeshEditCommands({
         continue;
       }
 
-      const [a, b, c] = triangle;
+      const face = topology.getFace(i);
 
-      const normal = b.clone()
-        .sub(a)
-        .cross(c.clone().sub(a))
-        .normalize();
+      if (!face) continue;
 
-      const offset = normal.multiplyScalar(distance);
+      const moved = face.vertices.map(getMovedVertex);
 
-      const A = a.clone().add(offset);
-      const B = b.clone().add(offset);
-      const C = c.clone().add(offset);
+      if (moved.some(vertex => !vertex)) {
+        result.push(triangle);
+        continue;
+      }
 
-      // 押し出した上面
-      result.push([A, B, C]);
+      result.push(moved);
+    }
 
-      // 側面
-      result.push([a.clone(), b.clone(), B.clone()]);
-      result.push([a.clone(), B.clone(), A.clone()]);
+    // 選択範囲の外周だけ側面を作る
+    for (const faceId of selectedFaces) {
+      const face = topology.getFace(faceId);
 
-      result.push([b.clone(), c.clone(), C.clone()]);
-      result.push([b.clone(), C.clone(), B.clone()]);
+      if (!face) continue;
 
-      result.push([c.clone(), a.clone(), A.clone()]);
-      result.push([c.clone(), A.clone(), C.clone()]);
+      for (let j = 0; j < 3; j++) {
+        const edgeId = face.edges[j];
+        const edge = topology.getEdge(edgeId);
+
+        if (!edge) continue;
+
+        const selectedAdjacentFaces = edge.faces.filter(
+          id => selectedFaces.has(id)
+        );
+
+        // 選択面が2つ以上接している辺には壁を作らない
+        if (selectedAdjacentFaces.length !== 1) {
+          continue;
+        }
+
+        const startId = face.vertices[j];
+        const endId = face.vertices[(j + 1) % 3];
+
+        const start = topology.getVertex(startId);
+        const end = topology.getVertex(endId);
+
+        const movedStart = getMovedVertex(startId);
+        const movedEnd = getMovedVertex(endId);
+
+        if (
+          !start ||
+          !end ||
+          !movedStart ||
+          !movedEnd
+        ) {
+          continue;
+        }
+
+        const a = new THREE.Vector3(
+          start.position.x,
+          start.position.y,
+          start.position.z
+        );
+
+        const b = new THREE.Vector3(
+          end.position.x,
+          end.position.y,
+          end.position.z
+        );
+
+        // 外周の側面を2枚の三角形で作る
+        result.push([
+          a.clone(),
+          b.clone(),
+          movedEnd.clone()
+        ]);
+
+        result.push([
+          a.clone(),
+          movedEnd.clone(),
+          movedStart.clone()
+        ]);
+      }
     }
 
     rebuildGeometry(result);
