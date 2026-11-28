@@ -27,6 +27,10 @@ export function createMeshToolbar({
       font-family: sans-serif;
     }
 
+    .mesh-toolbar-drag-handle {
+      display: none;
+    }
+
     .mesh-toolbar-section {
       border: 1px solid #414653;
       border-radius: 9px;
@@ -185,8 +189,44 @@ export function createMeshToolbar({
 
     @media (max-width: 600px) {
       .mesh-toolbar {
+        position: fixed;
+        z-index: 10000;
+        top: 100px;
+        right: 10px;
+        left: auto;
+        width: min(300px, calc(100vw - 20px));
+        max-height: calc(100dvh - 115px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
         padding: 7px;
         gap: 7px;
+        box-shadow: 0 8px 30px rgba(0,0,0,.55);
+      }
+
+      .mesh-toolbar-drag-handle {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        min-height: 42px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #50596b;
+        border-radius: 8px;
+        background: #394354;
+        color: #fff;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .mesh-toolbar-drag-handle:active {
+        background: #46556c;
+        cursor: grabbing;
       }
 
       .mesh-toolbar-heading {
@@ -215,6 +255,61 @@ export function createMeshToolbar({
 
   const root = document.createElement("div");
   root.className = "mesh-toolbar";
+
+  // ドラッグ用の上部バー
+  const dragHandle = document.createElement("div");
+  dragHandle.className = "mesh-toolbar-drag-handle";
+  dragHandle.textContent = "☰ メッシュ編集パネル";
+  root.appendChild(dragHandle);
+
+  let dragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+
+  dragHandle.addEventListener("pointerdown", event => {
+    if (window.innerWidth > 600) return;
+
+    dragging = true;
+
+    const rect = root.getBoundingClientRect();
+
+    dragOffsetX = event.clientX - rect.left;
+    dragOffsetY = event.clientY - rect.top;
+
+    root.style.left = `${rect.left}px`;
+    root.style.top = `${rect.top}px`;
+    root.style.right = "auto";
+
+    dragHandle.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  dragHandle.addEventListener("pointermove", event => {
+    if (!dragging) return;
+
+    const maxLeft = window.innerWidth - root.offsetWidth;
+    const maxTop = window.innerHeight - root.offsetHeight;
+
+    const left = Math.max(
+      0,
+      Math.min(maxLeft, event.clientX - dragOffsetX)
+    );
+
+    const top = Math.max(
+      0,
+      Math.min(maxTop, event.clientY - dragOffsetY)
+    );
+
+    root.style.left = `${left}px`;
+    root.style.top = `${top}px`;
+  });
+
+  function stopDragging() {
+    dragging = false;
+  }
+
+  dragHandle.addEventListener("pointerup", stopDragging);
+  dragHandle.addEventListener("pointercancel", stopDragging);
 
   const sections = {};
 
@@ -332,27 +427,21 @@ export function createMeshToolbar({
     transformContent,
     "↔ 移動",
     null,
-    {
-      callback: () => setTransformMode("move")
-    }
+    { callback: () => setTransformMode("move") }
   );
 
   transformButtons.rotate = createButton(
     transformContent,
     "⟳ 回転",
     null,
-    {
-      callback: () => setTransformMode("rotate")
-    }
+    { callback: () => setTransformMode("rotate") }
   );
 
   transformButtons.scale = createButton(
     transformContent,
     "⤢ 拡大・縮小",
     null,
-    {
-      callback: () => setTransformMode("scale")
-    }
+    { callback: () => setTransformMode("scale") }
   );
 
   const transformPanel = document.createElement("div");
@@ -492,38 +581,38 @@ export function createMeshToolbar({
   createButton(utilityContent, "↷ やり直す", "redo");
 
   // ギズモ表示設定
-sections.gizmo = createSection("表示設定");
+  const gizmoContent = createSection("gizmo", "表示設定");
 
-let gizmoVisible = true;
+  let gizmoVisible = true;
 
-const gizmoButton = createButton(
-  sections.gizmo,
-  "XYZギズモ：ON",
-  null,
-  {
-    callback: () => {
-      setGizmoVisible(!gizmoVisible);
+  const gizmoButton = createButton(
+    gizmoContent,
+    "XYZギズモ：ON",
+    null,
+    {
+      callback: () => {
+        setGizmoVisible(!gizmoVisible);
+      }
     }
-  }
-);
-
-function setGizmoVisible(value) {
-  gizmoVisible = Boolean(value);
-
-  gizmoButton.textContent = gizmoVisible
-    ? "XYZギズモ：ON"
-    : "XYZギズモ：OFF";
-
-  gizmoButton.classList.toggle("active", gizmoVisible);
-
-  gizmoButton.setAttribute(
-    "aria-pressed",
-    String(gizmoVisible)
   );
 
-  onGizmoVisibilityChange?.(gizmoVisible);
-}
-  
+  function setGizmoVisible(value) {
+    gizmoVisible = Boolean(value);
+
+    gizmoButton.textContent = gizmoVisible
+      ? "XYZギズモ：ON"
+      : "XYZギズモ：OFF";
+
+    gizmoButton.classList.toggle("active", gizmoVisible);
+
+    gizmoButton.setAttribute(
+      "aria-pressed",
+      String(gizmoVisible)
+    );
+
+    onGizmoVisibilityChange?.(gizmoVisible);
+  }
+
   // 編集モード
   const modeControlContent = createSection(
     "modeControl",
