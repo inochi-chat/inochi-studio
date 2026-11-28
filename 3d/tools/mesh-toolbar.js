@@ -13,22 +13,55 @@ export function createMeshToolbar({
   const style = document.createElement("style");
 
   style.textContent = `
+    .mesh-toolbar-root {
+      position: fixed;
+      z-index: 10000;
+      top: 12px;
+      right: 12px;
+      font-family: sans-serif;
+    }
+
+    .mesh-toolbar-toggle {
+      width: 50px;
+      height: 50px;
+      border: 1px solid #596579;
+      border-radius: 12px;
+      background: #202b3c;
+      color: white;
+      font-size: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,.4);
+      touch-action: manipulation;
+    }
+
+    .mesh-toolbar-toggle:active {
+      transform: scale(.95);
+    }
+
     .mesh-toolbar {
+      position: absolute;
+      top: 58px;
+      right: 0;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: 100%;
-      padding: 9px;
+      width: min(330px, calc(100vw - 24px));
+      max-height: calc(100dvh - 85px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
       box-sizing: border-box;
+      padding: 9px;
       background: #20232b;
       color: #f4f5f7;
       border: 1px solid #414653;
       border-radius: 12px;
-      font-family: sans-serif;
+      box-shadow: 0 8px 30px rgba(0,0,0,.55);
     }
 
-    .mesh-toolbar-drag-handle {
-      display: none;
+    .mesh-toolbar[hidden] {
+      display: none !important;
     }
 
     .mesh-toolbar-section {
@@ -47,7 +80,6 @@ export function createMeshToolbar({
       gap: 10px;
       padding: 10px 13px;
       border: 0;
-      border-radius: 0;
       background: #303642;
       color: #f4f5f7;
       font-size: 13px;
@@ -57,7 +89,6 @@ export function createMeshToolbar({
     }
 
     .mesh-toolbar-heading:active {
-      transform: none;
       background: #3b4657;
     }
 
@@ -88,7 +119,7 @@ export function createMeshToolbar({
       gap: 7px;
     }
 
-    .mesh-toolbar button:not(.mesh-toolbar-heading) {
+    .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle) {
       min-height: 44px;
       min-width: 58px;
       padding: 9px 12px;
@@ -187,46 +218,29 @@ export function createMeshToolbar({
       line-height: 1.5;
     }
 
+    .mesh-toolbar-close {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #596579;
+      border-radius: 8px;
+      background: #394354;
+      color: white;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
     @media (max-width: 600px) {
-      .mesh-toolbar {
-        position: fixed;
-        z-index: 10000;
-        top: 100px;
+      .mesh-toolbar-root {
+        top: 10px;
         right: 10px;
-        left: auto;
-        width: min(300px, calc(100vw - 20px));
-        max-height: calc(100dvh - 115px);
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        -webkit-overflow-scrolling: touch;
+      }
+
+      .mesh-toolbar {
+        width: min(320px, calc(100vw - 20px));
+        max-height: calc(100dvh - 80px);
         padding: 7px;
         gap: 7px;
-        box-shadow: 0 8px 30px rgba(0,0,0,.55);
-      }
-
-      .mesh-toolbar-drag-handle {
-        display: flex;
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        min-height: 42px;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #50596b;
-        border-radius: 8px;
-        background: #394354;
-        color: #fff;
-        font-size: 13px;
-        font-weight: bold;
-        cursor: grab;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-      }
-
-      .mesh-toolbar-drag-handle:active {
-        background: #46556c;
-        cursor: grabbing;
       }
 
       .mesh-toolbar-heading {
@@ -234,7 +248,7 @@ export function createMeshToolbar({
         font-size: 14px;
       }
 
-      .mesh-toolbar button:not(.mesh-toolbar-heading) {
+      .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle) {
         flex: 1 1 auto;
         min-width: 70px;
         min-height: 46px;
@@ -253,66 +267,66 @@ export function createMeshToolbar({
 
   document.head.appendChild(style);
 
+  // ルート
   const root = document.createElement("div");
-  root.className = "mesh-toolbar";
+  root.className = "mesh-toolbar-root";
 
-  // ドラッグ用の上部バー
-  const dragHandle = document.createElement("div");
-  dragHandle.className = "mesh-toolbar-drag-handle";
-  dragHandle.textContent = "☰ メッシュ編集パネル";
-  root.appendChild(dragHandle);
+  // 右上のメニューボタン
+  const toggleButton = document.createElement("button");
+  toggleButton.type = "button";
+  toggleButton.className = "mesh-toolbar-toggle";
+  toggleButton.textContent = "☰";
+  toggleButton.title = "メッシュ編集メニュー";
+  toggleButton.setAttribute("aria-label", "メッシュ編集メニュー");
+  toggleButton.setAttribute("aria-expanded", "false");
 
-  let dragging = false;
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
+  root.appendChild(toggleButton);
 
-  dragHandle.addEventListener("pointerdown", event => {
-    if (window.innerWidth > 600) return;
+  // メニュー本体
+  const panel = document.createElement("div");
+  panel.className = "mesh-toolbar";
+  panel.hidden = true;
 
-    dragging = true;
+  root.appendChild(panel);
 
-    const rect = root.getBoundingClientRect();
-
-    dragOffsetX = event.clientX - rect.left;
-    dragOffsetY = event.clientY - rect.top;
-
-    root.style.left = `${rect.left}px`;
-    root.style.top = `${rect.top}px`;
-    root.style.right = "auto";
-
-    dragHandle.setPointerCapture(event.pointerId);
-    event.preventDefault();
-  });
-
-  dragHandle.addEventListener("pointermove", event => {
-    if (!dragging) return;
-
-    const maxLeft = window.innerWidth - root.offsetWidth;
-    const maxTop = window.innerHeight - root.offsetHeight;
-
-    const left = Math.max(
-      0,
-      Math.min(maxLeft, event.clientX - dragOffsetX)
-    );
-
-    const top = Math.max(
-      0,
-      Math.min(maxTop, event.clientY - dragOffsetY)
-    );
-
-    root.style.left = `${left}px`;
-    root.style.top = `${top}px`;
-  });
-
-  function stopDragging() {
-    dragging = false;
+  function openMenu() {
+    panel.hidden = false;
+    toggleButton.setAttribute("aria-expanded", "true");
+    toggleButton.textContent = "×";
   }
 
-  dragHandle.addEventListener("pointerup", stopDragging);
-  dragHandle.addEventListener("pointercancel", stopDragging);
+  function closeMenu() {
+    panel.hidden = true;
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.textContent = "☰";
+  }
 
-  const sections = {};
+  function toggleMenu() {
+    if (panel.hidden) {
+      openMenu();
+    } else {
+      closeMenu();
+    }
+  }
 
+  toggleButton.addEventListener("click", event => {
+    event.stopPropagation();
+    toggleMenu();
+  });
+
+  root.addEventListener("click", event => {
+    event.stopPropagation();
+  });
+
+  function handleOutsideClick(event) {
+    if (!root.contains(event.target)) {
+      closeMenu();
+    }
+  }
+
+  document.addEventListener("pointerdown", handleOutsideClick);
+
+  // セクション
   function createSection(key, title) {
     const section = document.createElement("div");
     section.className = "mesh-toolbar-section";
@@ -341,9 +355,7 @@ export function createMeshToolbar({
     });
 
     section.append(heading, content);
-    root.appendChild(section);
-
-    sections[key] = content;
+    panel.appendChild(section);
 
     return content;
   }
@@ -374,7 +386,6 @@ export function createMeshToolbar({
     });
 
     parent.appendChild(button);
-
     return button;
   }
 
@@ -636,7 +647,16 @@ export function createMeshToolbar({
   statusElement.className = "mesh-toolbar-status";
   statusElement.textContent = "Vertex / Edge / Face から選択してね";
 
-  root.appendChild(statusElement);
+  panel.appendChild(statusElement);
+
+  // 閉じるボタン
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "mesh-toolbar-close";
+  closeButton.textContent = "メニューを閉じる";
+
+  closeButton.addEventListener("click", closeMenu);
+  panel.appendChild(closeButton);
 
   container.replaceChildren(root);
 
@@ -691,7 +711,9 @@ export function createMeshToolbar({
     setMultiSelect,
     setEditing,
     setGizmoVisible,
+
     dispose() {
+      document.removeEventListener("pointerdown", handleOutsideClick);
       root.remove();
       style.remove();
     }
