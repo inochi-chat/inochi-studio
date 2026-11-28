@@ -52,7 +52,7 @@ import { createMeshToolbar } from "./tools/mesh-toolbar.js?v=2";
 
 import { createMeshSculptController } from "./app/mesh-sculpt.js";
 import { createMeshEditing } from "./app/mesh-editing.js";
-import { createMeshActions } from "./app/mesh-actions.js";
+import { createMeshActions } from "./app/mesh-actions.js?v=2";
 import { createObjectActions } from "./app/object-actions.js";
 
 // =====================================================
