@@ -486,7 +486,51 @@ function runMeshAction(action) {
   if (action.startsWith("transform:")) {
     const [, transformMode, rawValues] = action.split(":");
 
-    
+    const selection = meshPicker.getSelection();
+    const values = rawValues.split(",").map(Number);
+
+    if (
+      values.length !== 3 ||
+      values.some(value => !Number.isFinite(value))
+    ) {
+      alert("変形数値が正しくありません。");
+      return;
+    }
+
+    if (meshEditor.getSelectedVertices().length === 0) {
+      alert("変形する頂点を選択してください。");
+      return;
+    }
+
+    meshHistory.save();
+
+    let success = false;
+
+    if (transformMode === "move") {
+      success = meshOperations.move(...values);
+    }
+
+    if (transformMode === "rotate") {
+      const radians = values.map(
+        value => value * Math.PI / 180
+      );
+
+      success = meshOperations.rotate(...radians);
+    }
+
+    if (transformMode === "scale") {
+      success = meshOperations.scale(...values);
+    }
+
+    if (success) {
+      rebuildMeshTools();
+    } else {
+      meshHistory.undo();
+    }
+
+    return;
+  }
+
   // スカルプト操作
   if (action.startsWith("sculpt:")) {
     const [, mode, rawRadius, rawStrength] = action.split(":");
@@ -529,52 +573,6 @@ function runMeshAction(action) {
     } else {
       meshHistory.undo();
       alert("スカルプトを適用できませんでした。");
-    }
-
-    return;
-  }
-
-    
-    const selection = meshPicker.getSelection();
-    const values = rawValues.split(",").map(Number);
-
-    if (
-      values.length !== 3 ||
-      values.some(value => !Number.isFinite(value))
-    ) {
-      alert("変形数値が正しくありません。");
-      return;
-    }
-
-    if (meshEditor.getSelectedVertices().length === 0) {
-      alert("変形する頂点を選択してください。");
-      return;
-    }
-
-    meshHistory.save();
-
-    let success = false;
-
-    if (transformMode === "move") {
-      success = meshOperations.move(...values);
-    }
-
-    if (transformMode === "rotate") {
-      const radians = values.map(
-        value => value * Math.PI / 180
-      );
-
-      success = meshOperations.rotate(...radians);
-    }
-
-    if (transformMode === "scale") {
-      success = meshOperations.scale(...values);
-    }
-
-    if (success) {
-      rebuildMeshTools();
-    } else {
-      meshHistory.undo();
     }
 
     return;
