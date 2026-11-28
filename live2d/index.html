@@ -4,40 +4,225 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Inochi Studio - Live2D Editor</title>
+
   <link rel="stylesheet" href="../shared/home.css">
-  <style>
-    .editor-workspace {
-      margin-top: 40px;
-      padding: 35px;
-      min-height: 300px;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 20px;
-      background: rgba(255,255,255,0.06);
-    }
-  </style>
+  <link rel="stylesheet" href="./styles/editor.css">
 </head>
-<body>
-  <header class="header">
-    <div class="logo">INOCHI STUDIO / LIVE2D</div>
-    <div class="header-subtitle">2D CHARACTER EDITOR</div>
+
+<body class="live2d-editor">
+
+  <!-- ヘッダー -->
+  <header class="editor-header">
+
+    <div class="header-left">
+      <a href="../index.html" class="back-button">← HOME</a>
+      <div class="editor-logo">INOCHI STUDIO</div>
+      <div class="editor-mode">LIVE2D</div>
+    </div>
+
+    <div class="header-center">
+      <span id="projectName">Untitled Model</span>
+    </div>
+
+    <div class="header-right">
+      <button id="undoButton">↶</button>
+      <button id="redoButton">↷</button>
+      <button id="saveButton">保存</button>
+      <button id="exportButton">書き出し</button>
+    </div>
+
   </header>
 
-  <main class="main">
-    <a href="../index.html" style="color:#c3a5ff;text-decoration:none;">
-      ← ホームに戻る
-    </a>
+  <!-- メインメニュー -->
+  <nav class="editor-menu">
+    <button>ファイル</button>
+    <button>編集</button>
+    <button>表示</button>
+    <button>モデル</button>
+    <button>メッシュ</button>
+    <button>アニメーション</button>
+    <button>ヘルプ</button>
+  </nav>
 
-    <h1>Live2Dエディター</h1>
-    <p class="hero-description">
-      イラストのパーツ分けや変形、アニメーションを
-      制作するための作業スペース。
-    </p>
+  <!-- エディター全体 -->
+  <main class="editor-layout">
 
-    <section class="editor-workspace">
-      <h2>LIVE2D WORKSPACE</h2>
-      <p>ここにLive2D編集画面を実装していくよ。</p>
+    <!-- 左パネル -->
+    <aside class="left-panel">
+
+      <section class="panel-section">
+
+        <div class="panel-title">ツール</div>
+
+        <div class="tool-grid">
+
+          <button class="tool-button active" data-tool="select">
+            ↖<span>選択</span>
+          </button>
+
+          <button class="tool-button" data-tool="move">
+            ✥<span>移動</span>
+          </button>
+
+          <button class="tool-button" data-tool="mesh">
+            ◇<span>メッシュ</span>
+          </button>
+
+          <button class="tool-button" data-tool="deform">
+            ▧<span>変形</span>
+          </button>
+
+          <button class="tool-button" data-tool="rotate">
+            ⟳<span>回転</span>
+          </button>
+
+          <button class="tool-button" data-tool="brush">
+            ✎<span>ブラシ</span>
+          </button>
+
+        </div>
+
+      </section>
+
+      <section class="panel-section parts-section">
+
+        <div class="panel-heading">
+          <span>パーツ一覧</span>
+          <button id="addPartButton">＋</button>
+        </div>
+
+        <div id="partsList" class="parts-list">
+          <div class="empty-message">
+            まだパーツがありません
+          </div>
+        </div>
+
+        <input
+          type="file"
+          id="imageFileInput"
+          accept="image/*"
+          hidden
+        >
+
+        <button id="importImageButton" class="wide-button">
+          ＋ 画像を読み込む
+        </button>
+
+      </section>
+
+    </aside>
+
+    <!-- 中央キャンバス -->
+    <section class="canvas-area">
+
+      <div class="canvas-toolbar">
+
+        <span>MODEL VIEW</span>
+
+        <div class="canvas-controls">
+          <button id="zoomOutButton">－</button>
+          <span id="zoomValue">100%</span>
+          <button id="zoomInButton">＋</button>
+          <button id="fitCanvasButton">全体表示</button>
+        </div>
+
+      </div>
+
+      <div class="canvas-wrapper">
+
+        <canvas id="live2dCanvas"></canvas>
+
+        <div id="canvasEmpty" class="canvas-empty">
+          <div class="empty-icon">◇</div>
+          <h2>モデルを制作しよう</h2>
+          <p>画像を読み込んでLive2D制作を始めよう。</p>
+          <button id="canvasImportButton">
+            画像を読み込む
+          </button>
+        </div>
+
+      </div>
+
+      <div class="canvas-status">
+        <span id="editorStatus">準備完了</span>
+        <span>INOCHI LIVE2D ENGINE</span>
+      </div>
+
     </section>
+
+    <!-- 右パネル -->
+    <aside class="right-panel">
+
+      <section class="panel-section">
+
+        <div class="panel-title">プロパティ</div>
+
+        <div id="propertyContent">
+          <div class="empty-message">
+            パーツを選択してください
+          </div>
+        </div>
+
+      </section>
+
+      <section class="panel-section">
+
+        <div class="panel-heading">
+          <span>パラメータ</span>
+          <button id="addParameterButton">＋</button>
+        </div>
+
+        <div id="parameterList">
+          <div class="empty-message">
+            パラメータはまだありません
+          </div>
+        </div>
+
+      </section>
+
+      <section class="panel-section">
+
+        <div class="panel-heading">
+          <span>デフォーマ</span>
+          <button id="addDeformerButton">＋</button>
+        </div>
+
+        <div id="deformerList">
+          <div class="empty-message">
+            デフォーマはまだありません
+          </div>
+        </div>
+
+      </section>
+
+    </aside>
+
   </main>
+
+  <!-- タイムライン -->
+  <section class="timeline-panel">
+
+    <div class="timeline-header">
+      <span>タイムライン</span>
+
+      <div>
+        <button id="playButton">▶</button>
+        <button id="stopButton">■</button>
+        <button id="addKeyframeButton">＋ キーフレーム</button>
+      </div>
+    </div>
+
+    <div class="timeline-content">
+      <div class="timeline-empty">
+        アニメーション機能は今後実装
+      </div>
+    </div>
+
+  </section>
+
+  <script type="module" src="./main.js"></script>
+
 </body>
 </html>
