@@ -486,6 +486,56 @@ function runMeshAction(action) {
   if (action.startsWith("transform:")) {
     const [, transformMode, rawValues] = action.split(":");
 
+    
+  // スカルプト操作
+  if (action.startsWith("sculpt:")) {
+    const [, mode, rawRadius, rawStrength] = action.split(":");
+
+    const radius = Number(rawRadius);
+    const strength = Number(rawStrength);
+
+    if (
+      !Number.isFinite(radius) ||
+      !Number.isFinite(strength) ||
+      radius <= 0
+    ) {
+      alert("ブラシサイズと強さを正しく入力してください。");
+      return;
+    }
+
+    if (meshEditor.getSelectedVertices().length === 0) {
+      alert("スカルプトする頂点を選択してください。");
+      return;
+    }
+
+    meshHistory.save();
+
+    let success = false;
+
+    if (mode === "pushpull") {
+      success = meshOperations.sculptPushPull(radius, strength);
+    }
+
+    if (mode === "smooth") {
+      success = meshOperations.sculptSmooth(radius, strength);
+    }
+
+    if (mode === "inflate") {
+      success = meshOperations.sculptInflate(radius, strength);
+    }
+
+    if (success) {
+      rebuildMeshTools();
+    } else {
+      meshHistory.undo();
+      alert("スカルプトを適用できませんでした。");
+    }
+
+    return;
+  }
+
+    
+    const selection = meshPicker.getSelection();
     const values = rawValues.split(",").map(Number);
 
     if (
