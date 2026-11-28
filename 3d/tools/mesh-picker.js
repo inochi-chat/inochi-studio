@@ -9,7 +9,8 @@ export function createMeshPicker({
   topology,
   visuals,
   meshEditor = null,
-  onSelectionChange = () => {}
+  onSelectionChange = () => {},
+  onSculptStroke = () => {}
 }) {
   if (!camera || !renderer || !mesh || !topology || !visuals) {
     throw new Error("メッシュ選択に必要な設定が不足しています。");
@@ -23,6 +24,9 @@ export function createMeshPicker({
   let multiSelect = false;
   let pointerStart = null;
   let previousOrbitEnabled = null;
+
+  let sculptEnabled = false;
+  let sculptMode = "pushpull";
 
   const selected = {
     vertices: new Set(),
@@ -124,6 +128,7 @@ export function createMeshPicker({
     selected.vertices.clear();
     selected.edges.clear();
     selected.faces.clear();
+
     updateVisuals();
     notifySelection();
   }
@@ -406,6 +411,68 @@ export function createMeshPicker({
   }
 
   // -------------------------
+  // Sculpt brush hit
+  // -------------------------
+
+  function getSculptHit(clientX, clientY) {
+    const rect = element.getBoundingClientRect();
+
+    if (!rect.width || !rect.height) return null;
+
+    pointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1
+    );
+
+    raycaster.setFromCamera(pointer, camera);
+
+    const hits = raycaster.intersectObject(mesh, false);
+
+    if (!hits.length) return null;
+
+    const hit = hits[0];
+
+    mesh.updateWorldMatrix(true, false);
+
+    const localPoint = mesh.worldToLocal(hit.point.clone());
+
+    let localNormal = null;
+
+    if (hit.face?.normal) {
+      const normalMatrix = new THREE.Matrix3()
+        .getNormalMatrix(mesh.matrixWorld);
+
+      localNormal = hit.face.normal.clone()
+        .applyMatrix3(normalMatrix)
+        .normalize();
+    }
+
+    return {
+      point: localPoint,
+      worldPoint: hit.point.clone(),
+      normal: localNormal,
+      faceIndex: hit.faceIndex
+    };
+  }
+
+  function sendSculptStroke(phase, clientX, clientY) {
+    const hit = getSculptHit(clientX, clientY);
+
+    if (!hit && phase !== "end" && phase !== "cancel") {
+      return;
+    }
+
+    onSculptStroke({
+      phase,
+      mode: sculptMode,
+      point: hit?.point ?? null,
+      worldPoint: hit?.worldPoint ?? null,
+      normal: hit?.normal ?? null,
+      faceIndex: hit?.faceIndex ?? null
+    });
+  }
+
+  // -------------------------
   // Rectangle selection
   // -------------------------
 
@@ -470,13 +537,13 @@ export function createMeshPicker({
       return;
     }
 
-    // カメラ操作を先に止める
     disableOrbitForSelection();
 
     pointerStart = {
       x: event.clientX,
       y: event.clientY,
-      pointerId: event.pointerId
+      pointerId: event.pointerId,
+      sculpt: sculptEnabled
     };
 
     event.preventDefault();
@@ -487,6 +554,10 @@ export function createMeshPicker({
     }
 
     hideSelectionBox();
+
+    if (pointerStart.sculpt) {
+      sendSculptStroke("start", event.clientX, event.clientY);
+    }
   }
 
   function handlePointerMove(event) {
@@ -501,6 +572,11 @@ export function createMeshPicker({
 
     event.preventDefault();
     event.stopPropagation();
+
+    if (pointerStart.sculpt) {
+      sendSculptStroke("move", event.clientX, event.clientY);
+      return;
+    }
 
     updateSelectionBox({
       x: event.clientX,
@@ -534,11 +610,15 @@ export function createMeshPicker({
     const dx = end.x - start.x;
     const dy = end.y - start.y;
 
+    const wasSculpt = pointerStart.sculpt === true;
+
     pointerStart = null;
     hideSelectionBox();
 
     try {
-      if (Math.hypot(dx, dy) < 6) {
+      if (wasSculpt) {
+        sendSculptStroke("end", end.x, end.y);
+      } else if (Math.hypot(dx, dy) < 6) {
         selectAt(end.x, end.y);
       } else {
         selectByRectangle(start, end);
@@ -558,16 +638,32 @@ export function createMeshPicker({
       return;
     }
 
+    const wasSculpt = pointerStart.sculpt;
+
     pointerStart = null;
     hideSelectionBox();
+
+    if (wasSculpt) {
+      sendSculptStroke("cancel", event.clientX, event.clientY);
+    }
+
     restoreOrbitAfterSelection();
   }
 
   function handleLostPointerCapture() {
     if (!pointerStart) return;
 
+    const wasSculpt = pointerStart.sculpt;
+    const x = pointerStart.x;
+    const y = pointerStart.y;
+
     pointerStart = null;
     hideSelectionBox();
+
+    if (wasSculpt) {
+      sendSculptStroke("cancel", x, y);
+    }
+
     restoreOrbitAfterSelection();
   }
 
@@ -588,6 +684,14 @@ export function createMeshPicker({
     meshEditor?.setMultiSelect(multiSelect);
   }
 
+  function setSculptMode(enabled, brushMode = "pushpull") {
+    sculptEnabled = Boolean(enabled);
+
+    if (["pushpull", "smooth", "inflate"].includes(brushMode)) {
+      sculptMode = brushMode;
+    }
+  }
+
   // -------------------------
   // Event registration
   // -------------------------
@@ -597,6 +701,10 @@ export function createMeshPicker({
   element.addEventListener("pointerup", handlePointerUp);
   element.addEventListener("pointercancel", handlePointerCancel);
   element.addEventListener("lostpointercapture", handleLostPointerCapture);
+
+  // -------------------------
+  // Dispose
+  // -------------------------
 
   function dispose() {
     element.removeEventListener("pointerdown", handlePointerDown, true);
@@ -611,9 +719,14 @@ export function createMeshPicker({
     selectionBox.remove();
   }
 
+  // -------------------------
+  // Public API
+  // -------------------------
+
   return {
     setMode,
     setMultiSelect,
+    setSculptMode,
     clearSelection,
 
     getSelection: () => ({
