@@ -263,13 +263,19 @@ function rebuildMeshTools() {
   });
 
   // XYZ移動ギズモを作成
-  meshGizmo = createMeshGizmo({
-    scene,
-    camera,
-    renderer,
-    mesh: activeMesh,
-    topology: meshTopology
-  });
+  
+meshGizmo = createMeshGizmo({
+  scene,
+  camera,
+  renderer,
+  mesh: activeMesh,
+  topology: meshTopology,
+  operations: meshOperations,
+  meshEditor,
+  meshHistory,
+  orbitControls: orbit
+});
+
 
   meshPicker = createMeshPicker({
     camera,
