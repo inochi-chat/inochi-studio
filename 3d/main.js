@@ -18,6 +18,7 @@ import { createSelectionSystem } from "./app/selection-controller.js";
 import { createSelectionActions } from "./app/selection-actions.js";
 import { createHistoryActions } from "./app/history-actions.js";
 import { createGroupActions } from "./app/group-actions.js";
+import { createMultiSelectionUI } from "./app/multi-selection-ui.js";
 
 import { createTransformTool } from "./tools/transform-tool.js";
 import { createHistoryManager } from "./history/history-manager.js";
@@ -587,39 +588,16 @@ document
   );
 
 // =====================================================
-// 25. 複数選択モード
+// 25. 複数選択UIモジュール
 // =====================================================
 
-function updateMultiSelectionButton() {
-  if (!multiSelectionButton) return;
-
-  const enabled = multiSelectionMode.isEnabled();
-
-  multiSelectionButton.textContent = enabled
-    ? "☑ 複数選択：ON"
-    : "☐ 複数選択：OFF";
-
-  multiSelectionButton.classList.toggle("active", enabled);
-}
-
-multiSelectionButton?.addEventListener("click", () => {
-  if (meshEditing) return;
-
-  const enabled = multiSelectionMode.toggle();
-
-  if (!enabled) {
-    const selectedObjects = multiSelection.getAll();
-
-    multiSelectionController.select(
-      selectedObjects[0] ?? null,
-      false
-    );
-  }
-
-  updateMultiSelectionButton();
+const multiSelectionUI = createMultiSelectionUI({
+  button: multiSelectionButton,
+  mode: multiSelectionMode,
+  multiSelection,
+  multiSelectionController,
+  isEditing: () => meshEditing
 });
-
-updateMultiSelectionButton();
 
 // =====================================================
 // 26. Undo・Redo
