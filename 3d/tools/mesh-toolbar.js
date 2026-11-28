@@ -224,45 +224,31 @@ export function createMeshToolbar({
     }
 
     /* サイズ変更つまみ */
-    .mesh-toolbar-resize {
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      margin: 0;
-      border: 0;
-      border-radius: 0 9px 0 11px;
-      background: rgba(164, 139, 232, .3);
-      color: #e3d8ff;
-      font-size: 21px;
-      font-weight: bold;
-      cursor: nwse-resize;
-      touch-action: none;
-      z-index: 5;
-    }
-
-    .mesh-toolbar-resize:active {
-      background: rgba(164, 139, 232, .7);
-    }
-
-    @media (max-width: 600px) {
-      .mesh-toolbar-root {
-        top: 12px;
-        right: 10px;
-      }
-
-      .mesh-toolbar {
-        width: 245px;
-        max-width: calc(100vw - 24px);
-        max-height: 48dvh;
-      }
-    }
-  `;
+    
+.mesh-toolbar-resize {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  min-height: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 6px 0 0;
+  border: 2px solid #a48be8;
+  border-radius: 9px;
+  background: #514078;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 20;
+}
+`;
 
   document.head.appendChild(style);
 
@@ -319,7 +305,7 @@ export function createMeshToolbar({
   const resizeHandle = document.createElement("button");
   resizeHandle.type = "button";
   resizeHandle.className = "mesh-toolbar-resize";
-  resizeHandle.textContent = "◢";
+  resizeHandle.textContent = "↔  メニューサイズ変更  ↕";
   resizeHandle.title = "ドラッグしてメニューのサイズを変更";
   resizeHandle.setAttribute("aria-label", "メニューサイズ変更");
   panel.appendChild(resizeHandle);
