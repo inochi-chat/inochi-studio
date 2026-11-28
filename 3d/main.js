@@ -237,7 +237,8 @@ let meshMultiSelect = false;
 
 // ギズモ表示状態
 let meshGizmoVisible = true;
-
+let meshSculptEnabled = false;
+let meshSculptMode = "pushpull";
 
 // メッシュ編集用の選択・表示を再構築
 function rebuildMeshTools() {
