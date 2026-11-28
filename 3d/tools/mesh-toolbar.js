@@ -3,7 +3,8 @@ export function createMeshToolbar({
   container,
   onModeChange,
   onMultiSelectChange,
-  onAction
+  onAction,
+  onGizmoVisibilityChange
 }) {
   if (!container) {
     throw new Error("Mesh toolbar container not found");
@@ -490,6 +491,39 @@ export function createMeshToolbar({
   createButton(utilityContent, "↶ 元に戻す", "undo");
   createButton(utilityContent, "↷ やり直す", "redo");
 
+  // ギズモ表示設定
+sections.gizmo = createSection("表示設定");
+
+let gizmoVisible = true;
+
+const gizmoButton = createButton(
+  sections.gizmo,
+  "XYZギズモ：ON",
+  null,
+  {
+    callback: () => {
+      setGizmoVisible(!gizmoVisible);
+    }
+  }
+);
+
+function setGizmoVisible(value) {
+  gizmoVisible = Boolean(value);
+
+  gizmoButton.textContent = gizmoVisible
+    ? "XYZギズモ：ON"
+    : "XYZギズモ：OFF";
+
+  gizmoButton.classList.toggle("active", gizmoVisible);
+
+  gizmoButton.setAttribute(
+    "aria-pressed",
+    String(gizmoVisible)
+  );
+
+  onGizmoVisibilityChange?.(gizmoVisible);
+}
+  
   // 編集モード
   const modeControlContent = createSection(
     "modeControl",
@@ -567,7 +601,7 @@ export function createMeshToolbar({
     setMode,
     setMultiSelect,
     setEditing,
-
+    setGizmoVisible,
     dispose() {
       root.remove();
       style.remove();
