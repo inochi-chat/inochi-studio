@@ -45,18 +45,20 @@ export function createMeshToolbar({
       flex-direction: column;
       gap: 6px;
 
-      width: min(245px, calc(100vw - 110px));
-      max-width: 245px;
+      width: 245px;
+      min-width: 190px;
+      max-width: calc(100vw - 24px);
       max-height: 48dvh;
+      min-height: 160px;
 
       overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       box-sizing: border-box;
-      padding: 7px;
+      padding: 7px 7px 32px;
 
-      background: rgba(32, 35, 43, .78);
+      background: rgba(32, 35, 43, .82);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
 
@@ -75,6 +77,7 @@ export function createMeshToolbar({
       border-radius: 9px;
       overflow: hidden;
       background: rgba(25, 29, 37, .72);
+      flex-shrink: 0;
     }
 
     .mesh-toolbar-heading {
@@ -114,7 +117,7 @@ export function createMeshToolbar({
       display: flex;
     }
 
-    .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle):not(.mesh-toolbar-close) {
+    .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle):not(.mesh-toolbar-close):not(.mesh-toolbar-resize) {
       min-height: 40px;
       min-width: 0;
       padding: 8px 10px;
@@ -217,6 +220,34 @@ export function createMeshToolbar({
       color: white;
       font-size: 12px;
       font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    /* サイズ変更つまみ */
+    .mesh-toolbar-resize {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      border: 0;
+      border-radius: 0 9px 0 11px;
+      background: rgba(164, 139, 232, .3);
+      color: #e3d8ff;
+      font-size: 21px;
+      font-weight: bold;
+      cursor: nwse-resize;
+      touch-action: none;
+      z-index: 5;
+    }
+
+    .mesh-toolbar-resize:active {
+      background: rgba(164, 139, 232, .7);
     }
 
     @media (max-width: 600px) {
@@ -226,19 +257,9 @@ export function createMeshToolbar({
       }
 
       .mesh-toolbar {
-        width: min(245px, calc(100vw - 110px));
-        max-width: 245px;
+        width: 245px;
+        max-width: calc(100vw - 24px);
         max-height: 48dvh;
-      }
-
-      .mesh-toolbar-heading {
-        min-height: 42px;
-        font-size: 12px;
-      }
-
-      .mesh-toolbar button:not(.mesh-toolbar-heading):not(.mesh-toolbar-toggle):not(.mesh-toolbar-close) {
-        min-height: 40px;
-        font-size: 12px;
       }
     }
   `;
@@ -294,6 +315,69 @@ export function createMeshToolbar({
 
   document.addEventListener("pointerdown", handleOutsideClick);
 
+  /* メニューの縦横サイズ変更 */
+  const resizeHandle = document.createElement("button");
+  resizeHandle.type = "button";
+  resizeHandle.className = "mesh-toolbar-resize";
+  resizeHandle.textContent = "◢";
+  resizeHandle.title = "ドラッグしてメニューのサイズを変更";
+  resizeHandle.setAttribute("aria-label", "メニューサイズ変更");
+  panel.appendChild(resizeHandle);
+
+  let resizeState = null;
+
+  resizeHandle.addEventListener("pointerdown", event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rect = panel.getBoundingClientRect();
+
+    resizeState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth: rect.width,
+      startHeight: rect.height
+    };
+
+    resizeHandle.setPointerCapture(event.pointerId);
+  });
+
+  resizeHandle.addEventListener("pointermove", event => {
+    if (!resizeState || event.pointerId !== resizeState.pointerId) return;
+
+    const dx = resizeState.startX - event.clientX;
+    const dy = event.clientY - resizeState.startY;
+
+    const maxWidth = Math.min(560, window.innerWidth - 24);
+    const maxHeight = window.innerHeight * 0.85;
+
+    const newWidth = Math.max(
+      190,
+      Math.min(maxWidth, resizeState.startWidth + dx)
+    );
+
+    const newHeight = Math.max(
+      160,
+      Math.min(maxHeight, resizeState.startHeight + dy)
+    );
+
+    panel.style.width = `${newWidth}px`;
+    panel.style.height = `${newHeight}px`;
+    panel.style.maxHeight = `${maxHeight}px`;
+  });
+
+  function stopResize(event) {
+    if (!resizeState || event.pointerId !== resizeState.pointerId) return;
+    resizeState = null;
+  }
+
+  resizeHandle.addEventListener("pointerup", stopResize);
+  resizeHandle.addEventListener("pointercancel", stopResize);
+  resizeHandle.addEventListener("lostpointercapture", () => {
+    resizeState = null;
+  });
+
   function createSection(key, title) {
     const section = document.createElement("div");
     section.className = "mesh-toolbar-section";
@@ -322,7 +406,7 @@ export function createMeshToolbar({
     });
 
     section.append(heading, content);
-    panel.appendChild(section);
+    panel.insertBefore(section, resizeHandle);
 
     return content;
   }
@@ -554,14 +638,14 @@ export function createMeshToolbar({
   const statusElement = document.createElement("div");
   statusElement.className = "mesh-toolbar-status";
   statusElement.textContent = "Vertex / Edge / Face から選択してね";
-  panel.appendChild(statusElement);
+  panel.insertBefore(statusElement, resizeHandle);
 
   const closeButton = document.createElement("button");
   closeButton.type = "button";
   closeButton.className = "mesh-toolbar-close";
   closeButton.textContent = "メニューを閉じる";
   closeButton.addEventListener("click", closeMenu);
-  panel.appendChild(closeButton);
+  panel.insertBefore(closeButton, resizeHandle);
 
   container.replaceChildren(root);
 
