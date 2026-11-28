@@ -4,7 +4,8 @@ export function createMeshToolbar({
   onModeChange,
   onMultiSelectChange,
   onAction,
-  onGizmoVisibilityChange
+  onGizmoVisibilityChange,
+  onMirrorChange
 }) {
   if (!container) {
     throw new Error("Mesh toolbar container not found");
@@ -44,24 +45,20 @@ export function createMeshToolbar({
       display: flex;
       flex-direction: column;
       gap: 6px;
-
       width: 245px;
       min-width: 190px;
       max-width: calc(100vw - 24px);
       max-height: 48dvh;
       min-height: 160px;
-
       overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       box-sizing: border-box;
       padding: 7px 7px 32px;
-
       background: rgba(32, 35, 43, .82);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-
       color: #f4f5f7;
       border: 1px solid rgba(120, 130, 150, .55);
       border-radius: 12px;
@@ -223,32 +220,36 @@ export function createMeshToolbar({
       flex-shrink: 0;
     }
 
-    /* サイズ変更つまみ */
-    
-.mesh-toolbar-resize {
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  min-height: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 6px 0 0;
-  border: 2px solid #a48be8;
-  border-radius: 9px;
-  background: #514078;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: nwse-resize;
-  touch-action: none;
-  z-index: 20;
-}
-`;
+    .mesh-toolbar-resize {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      min-height: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 6px 0 0;
+      border: 2px solid #a48be8;
+      border-radius: 9px;
+      background: #514078;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: nwse-resize;
+      touch-action: none;
+      z-index: 20;
+    }
+
+    .mesh-mirror-description {
+      font-size: 10px;
+      color: #aeb7c8;
+      line-height: 1.5;
+    }
+  `;
 
   document.head.appendChild(style);
 
@@ -301,13 +302,14 @@ export function createMeshToolbar({
 
   document.addEventListener("pointerdown", handleOutsideClick);
 
-  /* メニューの縦横サイズ変更 */
+  // メニューサイズ変更
   const resizeHandle = document.createElement("button");
   resizeHandle.type = "button";
   resizeHandle.className = "mesh-toolbar-resize";
   resizeHandle.textContent = "↔  メニューサイズ変更  ↕";
   resizeHandle.title = "ドラッグしてメニューのサイズを変更";
   resizeHandle.setAttribute("aria-label", "メニューサイズ変更");
+
   panel.appendChild(resizeHandle);
 
   let resizeState = null;
@@ -360,6 +362,7 @@ export function createMeshToolbar({
 
   resizeHandle.addEventListener("pointerup", stopResize);
   resizeHandle.addEventListener("pointercancel", stopResize);
+
   resizeHandle.addEventListener("lostpointercapture", () => {
     resizeState = null;
   });
@@ -420,6 +423,7 @@ export function createMeshToolbar({
     return button;
   }
 
+  // 選択モード
   const modeContent = createSection("modes", "◆ 選択モード");
   const modeButtons = {};
 
@@ -435,6 +439,7 @@ export function createMeshToolbar({
     callback: () => setMode("face")
   });
 
+  // 選択設定
   const selectionContent = createSection("selection", "☑ 選択設定");
   let multiSelect = false;
 
@@ -445,6 +450,44 @@ export function createMeshToolbar({
     { callback: () => setMultiSelect(!multiSelect) }
   );
 
+  // 左右対称編集
+  const mirrorContent = createSection("mirror", "◐ 左右対称編集");
+
+  let mirrorXEnabled = false;
+
+  const mirrorButton = createButton(
+    mirrorContent,
+    "左右対称編集：OFF",
+    null,
+    {
+      callback: () => setMirrorX(!mirrorXEnabled)
+    }
+  );
+
+  const mirrorDescription = document.createElement("div");
+  mirrorDescription.className = "mesh-mirror-description";
+  mirrorDescription.textContent =
+    "X軸を中心に反対側の頂点も同じように編集します。";
+
+  mirrorContent.appendChild(mirrorDescription);
+
+  function setMirrorX(value) {
+    mirrorXEnabled = Boolean(value);
+
+    mirrorButton.textContent = mirrorXEnabled
+      ? "左右対称編集：ON"
+      : "左右対称編集：OFF";
+
+    mirrorButton.classList.toggle("active", mirrorXEnabled);
+    mirrorButton.setAttribute(
+      "aria-pressed",
+      String(mirrorXEnabled)
+    );
+
+    onMirrorChange?.(mirrorXEnabled);
+  }
+
+  // 変形
   const transformContent = createSection("transform", "↔ 変形");
   const transformButtons = {};
 
@@ -493,8 +536,8 @@ export function createMeshToolbar({
     inputs[axis.toLowerCase()] = input;
   }
 
-  const status = document.createElement("div");
-  status.className = "mesh-toolbar-status";
+  const transformStatus = document.createElement("div");
+  transformStatus.className = "mesh-toolbar-status";
 
   const applyButton = createButton(
     transformPanel,
@@ -515,7 +558,7 @@ export function createMeshToolbar({
     transformFields,
     applyButton,
     hint,
-    status
+    transformStatus
   );
 
   transformContent.appendChild(transformPanel);
@@ -555,20 +598,21 @@ export function createMeshToolbar({
     ];
 
     if (values.some(value => !Number.isFinite(value))) {
-      status.textContent = "正しい数値を入力してください";
+      transformStatus.textContent = "正しい数値を入力してください";
       return;
     }
 
     onAction?.(`transform:${transformMode}:${values.join(",")}`);
   }
 
+  // メッシュ編集
   const editContent = createSection("edit", "✂ メッシュ編集");
 
   createButton(editContent, "✂ 分割", "subdivide", {
     className: "primary"
   });
 
-    const extrudePanel = document.createElement("div");
+  const extrudePanel = document.createElement("div");
   extrudePanel.className = "mesh-transform-panel";
 
   const extrudeLabel = document.createElement("label");
@@ -624,18 +668,25 @@ export function createMeshToolbar({
     className: "danger"
   });
 
+  // その他
   const utilityContent = createSection("utility", "⚙ その他");
 
   createButton(utilityContent, "選択解除", "clear");
   createButton(utilityContent, "↶ 元に戻す", "undo");
   createButton(utilityContent, "↷ やり直す", "redo");
 
+  // ギズモ
   const gizmoContent = createSection("gizmo", "表示設定");
   let gizmoVisible = true;
 
-  const gizmoButton = createButton(gizmoContent, "XYZギズモ：ON", null, {
-    callback: () => setGizmoVisible(!gizmoVisible)
-  });
+  const gizmoButton = createButton(
+    gizmoContent,
+    "XYZギズモ：ON",
+    null,
+    {
+      callback: () => setGizmoVisible(!gizmoVisible)
+    }
+  );
 
   function setGizmoVisible(value) {
     gizmoVisible = Boolean(value);
@@ -650,6 +701,7 @@ export function createMeshToolbar({
     onGizmoVisibilityChange?.(gizmoVisible);
   }
 
+  // 編集モード
   const modeControlContent = createSection("modeControl", "◈ 編集モード");
 
   const editModeButton = createButton(
@@ -665,6 +717,7 @@ export function createMeshToolbar({
     "objectMode"
   );
 
+  // ステータス
   const statusElement = document.createElement("div");
   statusElement.className = "mesh-toolbar-status";
   statusElement.textContent = "Vertex / Edge / Face から選択してね";
@@ -728,6 +781,7 @@ export function createMeshToolbar({
     setMultiSelect,
     setEditing,
     setGizmoVisible,
+    setMirrorX,
 
     dispose() {
       document.removeEventListener("pointerdown", handleOutsideClick);
