@@ -237,9 +237,15 @@ let meshMultiSelect = false;
 
 // ギズモ表示状態
 let meshGizmoVisible = true;
+
 let meshSculptEnabled = false;
 let meshSculptMode = "pushpull";
+let meshSculptRadius = 0.5;
+let meshSculptStrength = 0.1;
 
+// ブラシ1ストロークにつき履歴を1回だけ保存する
+let meshSculptStrokeSaved = false;
+let meshSculptStrokeChanged = false;
 // メッシュ編集用の選択・表示を再構築
 function rebuildMeshTools() {
   if (!activeMesh || !meshEditing) return;
