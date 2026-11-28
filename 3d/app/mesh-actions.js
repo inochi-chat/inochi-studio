@@ -41,7 +41,7 @@ export function createMeshActionController({
     const meshOperations = getMeshOperations();
 
     if (action.startsWith("transform:")) {
-      const [, transformMode, rawValues] = action.split(":");
+      const [, mode, rawValues] = action.split(":");
       const values = rawValues.split(",").map(Number);
 
       if (
@@ -61,31 +61,22 @@ export function createMeshActionController({
 
       let success = false;
 
-      if (transformMode === "move") {
-        success = meshOperations.move(...values);
+      if (mode === "move") success = meshOperations.move(...values);
+      if (mode === "rotate") {
+        success = meshOperations.rotate(
+          ...values.map(value => value * Math.PI / 180)
+        );
       }
+      if (mode === "scale") success = meshOperations.scale(...values);
 
-      if (transformMode === "rotate") {
-        const radians = values.map(value => value * Math.PI / 180);
-        success = meshOperations.rotate(...radians);
-      }
-
-      if (transformMode === "scale") {
-        success = meshOperations.scale(...values);
-      }
-
-      if (success) {
-        rebuild();
-      } else {
-        meshHistory.undo();
-      }
+      if (success) rebuild();
+      else meshHistory.undo();
 
       return;
     }
 
     if (action.startsWith("sculpt:")) {
       const [, mode, rawRadius, rawStrength] = action.split(":");
-
       const radius = Number(rawRadius);
       const strength = Number(rawStrength);
 
@@ -110,18 +101,15 @@ export function createMeshActionController({
       if (mode === "pushpull") {
         success = meshOperations.sculptPushPull(radius, strength);
       }
-
       if (mode === "smooth") {
         success = meshOperations.sculptSmooth(radius, strength);
       }
-
       if (mode === "inflate") {
         success = meshOperations.sculptInflate(radius, strength);
       }
 
-      if (success) {
-        rebuild();
-      } else {
+      if (success) rebuild();
+      else {
         meshHistory.undo();
         alert("スカルプトを適用できませんでした。");
       }
@@ -151,59 +139,42 @@ export function createMeshActionController({
       return;
     }
 
-    if (action === "move") {
+    if (
+      action === "move" ||
+      action === "rotate" ||
+      action === "scale"
+    ) {
       if (meshEditor.getSelectedVertices().length === 0) {
-        alert("移動する頂点を選択してください。");
+        alert("頂点を選択してください。");
         return;
       }
 
-      const values = askVector("頂点の移動量", "0, 0.2, 0");
+      const defaults = {
+        move: "0, 0.2, 0",
+        rotate: "0, 0, 15",
+        scale: "1.2, 1.2, 1.2"
+      };
+
+      const values = askVector("変形量", defaults[action]);
       if (!values) return;
 
       meshHistory.save();
 
-      if (meshOperations.move(...values)) {
-        rebuild();
+      let success = false;
+
+      if (action === "move") {
+        success = meshOperations.move(...values);
+      }
+      if (action === "rotate") {
+        success = meshOperations.rotate(
+          ...values.map(value => value * Math.PI / 180)
+        );
+      }
+      if (action === "scale") {
+        success = meshOperations.scale(...values);
       }
 
-      return;
-    }
-
-    if (action === "rotate") {
-      if (meshEditor.getSelectedVertices().length === 0) {
-        alert("回転する頂点を選択してください。");
-        return;
-      }
-
-      const values = askVector("回転角度（度）", "0, 0, 15");
-      if (!values) return;
-
-      const radians = values.map(value => value * Math.PI / 180);
-
-      meshHistory.save();
-
-      if (meshOperations.rotate(...radians)) {
-        rebuild();
-      }
-
-      return;
-    }
-
-    if (action === "scale") {
-      if (meshEditor.getSelectedVertices().length === 0) {
-        alert("拡大・縮小する頂点を選択してください。");
-        return;
-      }
-
-      const values = askVector("拡大・縮小倍率", "1.2, 1.2, 1.2");
-      if (!values) return;
-
-      meshHistory.save();
-
-      if (meshOperations.scale(...values)) {
-        rebuild();
-      }
-
+      if (success) rebuild();
       return;
     }
 
@@ -250,13 +221,10 @@ export function createMeshActionController({
     if (action === "delete") {
       meshHistory.save();
       meshEditCommands.deleteSelection();
-      return;
     }
   }
 
-  return {
-    handleAction
-  };
+  return { handleAction };
 }
 
 export function createMeshActions({
