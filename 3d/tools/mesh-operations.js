@@ -2,6 +2,12 @@
 import * as THREE from "three";
 
 export function createMeshOperations(meshEditor) {
+  let mirrorXEnabled = false;
+
+  function positionKey(x, y, z) {
+    return `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;
+  }
+
   function getContext() {
     const mesh = meshEditor.getActiveMesh();
 
@@ -61,10 +67,44 @@ export function createMeshOperations(meshEditor) {
 
     const { mesh, position, selected } = context;
 
-    for (const vertex of selected) {
-      const current = vertex.position.clone();
+    // ミラー相手の頂点を探すため、全頂点を座標で分類
+    const positionMap = new Map();
 
+    for (let i = 0; i < position.count; i++) {
+      const key = positionKey(
+        position.getX(i),
+        position.getY(i),
+        position.getZ(i)
+      );
+
+      if (!positionMap.has(key)) {
+        positionMap.set(key, []);
+      }
+
+      positionMap.get(key).push(i);
+    }
+
+    const processed = new Set();
+
+    for (const vertex of selected) {
+      const original = vertex.position.clone();
+      const key = positionKey(
+        original.x,
+        original.y,
+        original.z
+      );
+
+      if (processed.has(key)) continue;
+
+      const onCenterLine = Math.abs(original.x) < 0.00001;
+
+      // 選択頂点を変形
+      const current = original.clone();
       transform(current, vertex);
+
+      if (mirrorXEnabled && onCenterLine) {
+        current.x = 0;
+      }
 
       for (const index of vertex.sourceIndices) {
         position.setXYZ(
@@ -74,6 +114,40 @@ export function createMeshOperations(meshEditor) {
           current.z
         );
       }
+
+      processed.add(key);
+
+      if (!mirrorXEnabled || onCenterLine) {
+        continue;
+      }
+
+      // X軸反対側の同じ位置にある頂点を探す
+      const mirrorKey = positionKey(
+        -original.x,
+        original.y,
+        original.z
+      );
+
+      const mirrorIndices = positionMap.get(mirrorKey);
+
+      if (!mirrorIndices || mirrorIndices.length === 0) {
+        continue;
+      }
+
+      // 変形結果をX軸反転して反対側へ適用
+      const mirrored = current.clone();
+      mirrored.x *= -1;
+
+      for (const index of mirrorIndices) {
+        position.setXYZ(
+          index,
+          mirrored.x,
+          mirrored.y,
+          mirrored.z
+        );
+      }
+
+      processed.add(mirrorKey);
     }
 
     position.needsUpdate = true;
@@ -144,11 +218,21 @@ export function createMeshOperations(meshEditor) {
     });
   }
 
+  function setMirrorX(enabled) {
+    mirrorXEnabled = Boolean(enabled);
+  }
+
+  function isMirrorXEnabled() {
+    return mirrorXEnabled;
+  }
+
   return {
     move,
     scale,
     rotate,
     captureState,
-    restoreState
+    restoreState,
+    setMirrorX,
+    isMirrorXEnabled
   };
 }
